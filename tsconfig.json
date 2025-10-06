@@ -1,0 +1,26 @@
+{
+	"$schema": "https://json.schemastore.org/tsconfig",
+	"compilerOptions": {
+		"esModuleInterop": true,
+		"skipLibCheck": true,
+		"target": "esnext",
+		"lib": ["esnext", "dom"],
+		"moduleDetection": "force",
+		"resolveJsonModule": true,
+		"isolatedModules": true,
+
+		"strict": true,
+		"strictNullChecks": true,
+
+		"declaration": true,
+		"declarationMap": true,
+
+		"noUnusedLocals": true,
+		"noUnusedParameters": true,
+		"forceConsistentCasingInFileNames": true,
+
+		"module": "nodenext",
+		"moduleResolution": "nodenext",
+		"verbatimModuleSyntax": true
+	}
+}
