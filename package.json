@@ -1,14 +1,13 @@
 {
-	"name": "plopslop-root",
-	"private": true,
-	"scripts": {
-		"format": "biome check --write .",
-		"test": "echo \"Error: no test specified\" && exit 1"
-	},
-	"packageManager": "pnpm@10.18.0",
-	"devDependencies": {
-		"@biomejs/biome": "catalog:",
-		"turbo": "catalog:",
-		"typescript": "catalog:"
-	}
+  "name": "plopslop-root",
+  "private": true,
+  "scripts": {
+    "format": "biome check --write ."
+  },
+  "packageManager": "pnpm@10.18.0",
+  "devDependencies": {
+    "@biomejs/biome": "catalog:",
+    "turbo": "catalog:",
+    "typescript": "catalog:"
+  }
 }
