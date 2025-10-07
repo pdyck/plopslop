@@ -18,6 +18,7 @@
     "test": "vitest"
   },
   "devDependencies": {
+    "@types/node": "^24.7.0",
     "typescript": "catalog:",
     "vite-tsconfig-paths": "catalog:",
     "vitest": "catalog:"
