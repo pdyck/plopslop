@@ -15,7 +15,11 @@
   ],
   "scripts": {
     "build": "tsc",
-    "test": "vitest"
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "peerDependencies": {
+    "ioredis": "^5.4.2"
   },
   "devDependencies": {
     "@types/node": "^24.7.0",

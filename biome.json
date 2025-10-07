@@ -19,11 +19,6 @@
       "recommended": true
     }
   },
-  "javascript": {
-    "formatter": {
-      "quoteStyle": "double"
-    }
-  },
   "assist": {
     "enabled": true,
     "actions": {
