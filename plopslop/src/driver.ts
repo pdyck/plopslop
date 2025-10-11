@@ -1,4 +1,7 @@
-export type MessageHandler = (message: string) => void;
+export type MessageHandler<TMessage = string, TContext = object> = (
+  message: TMessage,
+  context?: TContext,
+) => void;
 
 export interface PubSubDriver {
   connect(): Promise<void>;

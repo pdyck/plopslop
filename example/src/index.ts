@@ -1,3 +1,18 @@
-import { helloWorld } from "plopslop";
+import { createPubSub, RedisDriver, topic } from "plopslop";
+import { z } from "zod";
 
-console.log(helloWorld());
+const pubsub = createPubSub({
+  driver: new RedisDriver(),
+  topics: {
+    userCreated: topic({
+      name: "user.created",
+      schema: z.string(),
+    }),
+  },
+});
+
+await pubsub.userCreated.subscribe((message) =>
+  console.log(`Message received: ${message}`),
+);
+
+pubsub.userCreated.publish("User X created!");
