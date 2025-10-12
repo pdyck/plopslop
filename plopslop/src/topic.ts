@@ -1,5 +1,6 @@
 import type z from "zod";
 import type { MessageHandler, PubSubDriver } from "./driver.js";
+import { TopicIterator } from "./topic-iterator.js";
 
 export interface TopicDefinition<TSchema extends z.ZodType> {
   name: string;
@@ -19,17 +20,29 @@ export class Topic<TSchema extends z.ZodType> {
   ) {}
 
   async publish(message: z.infer<TSchema>): Promise<void> {
-    const validated = this.def.schema.parse(message);
-    const serialized = JSON.stringify(validated);
+    const serialized = this.serialize(message);
     return this.driver.publish(this.def.name, serialized);
   }
 
-  async subscribe(handler: MessageHandler<z.infer<TSchema>>): Promise<string> {
+  subscribe(handler: MessageHandler<z.infer<TSchema>>): Promise<string>;
+  subscribe(): TopicIterator<TSchema>;
+  subscribe(
+    handler?: MessageHandler<z.infer<TSchema>>,
+  ): Promise<string> | TopicIterator<TSchema> {
+    if (handler) {
+      return this.subscribeWithHandler(handler);
+    }
+
+    return new TopicIterator(this.driver, this);
+  }
+
+  private async subscribeWithHandler(
+    handler: MessageHandler<z.infer<TSchema>>,
+  ): Promise<string> {
     const wrapped = (message: string) => {
       try {
-        const parsed = JSON.parse(message);
-        const validated = this.def.schema.parse(parsed);
-        handler(validated);
+        const parsed = this.parse(message);
+        handler(parsed);
       } catch (error) {
         console.error(
           `Failed to parse/validate message on topic "${this.def.name}":`,
@@ -43,5 +56,15 @@ export class Topic<TSchema extends z.ZodType> {
 
   async unsubscribe(subscription: string): Promise<void> {
     return this.driver.unsubscribe(subscription);
+  }
+
+  private serialize(message: z.infer<TSchema>) {
+    const parsed = this.def.schema.parse(message);
+    return JSON.stringify(parsed);
+  }
+
+  private parse(message: string) {
+    const parsed = JSON.parse(message);
+    return this.def.schema.parse(parsed);
   }
 }

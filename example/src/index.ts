@@ -8,11 +8,20 @@ const pubsub = createPubSub({
       name: "user.created",
       schema: z.string(),
     }),
+    userUpdated: topic({
+      name: "user.updated",
+      schema: z.number(),
+    }),
   },
 });
 
-await pubsub.userCreated.subscribe((message) =>
-  console.log(`Message received: ${message}`),
-);
+(async () => {
+  for await (const message of pubsub.userCreated.subscribe()) {
+    console.log(`async iterator: ${message}`);
+  }
+})();
 
-pubsub.userCreated.publish("User X created!");
+setTimeout(() => {
+  pubsub.userCreated.publish("User X created!");
+  pubsub.userUpdated.publish(42);
+}, 1000);
