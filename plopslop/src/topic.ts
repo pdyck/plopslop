@@ -1,21 +1,10 @@
 import type z from "zod";
-import type { MessageHandler, PubSubDriver } from "./driver.js";
 import { TopicIterator } from "./topic-iterator.js";
-
-export interface TopicDefinition<TSchema extends z.ZodType> {
-  name: string;
-  schema: TSchema;
-}
-
-export function topic<TSchema extends z.ZodType>(
-  topic: TopicDefinition<TSchema>,
-): TopicDefinition<TSchema> {
-  return topic;
-}
+import type { Driver, MessageHandler, TopicDefinition } from "./types.js";
 
 export class Topic<TSchema extends z.ZodType> {
   constructor(
-    private readonly driver: PubSubDriver,
+    private readonly driver: Driver,
     private readonly def: TopicDefinition<TSchema>,
   ) {}
 
@@ -67,4 +56,10 @@ export class Topic<TSchema extends z.ZodType> {
     const parsed = JSON.parse(message);
     return this.def.schema.parse(parsed);
   }
+}
+
+export function topic<TSchema extends z.ZodType>(
+  topic: TopicDefinition<TSchema>,
+): TopicDefinition<TSchema> {
+  return topic;
 }

@@ -1,10 +1,10 @@
 import type { z } from "zod";
-import type { PubSubDriver } from "./driver.js";
 import type { Topic } from "./topic.js";
 import { TopicIterator } from "./topic-iterator.js";
+import type { Driver } from "./types.js";
 
 describe("TopicIterator", () => {
-  let mockDriver: PubSubDriver;
+  let mockDriver: Driver;
   let mockTopic: Topic<z.ZodString>;
   let subscriberHandler: ((message: string) => void) | null = null;
 

@@ -1,10 +1,10 @@
 import { z } from "zod";
-import type { PubSubDriver } from "./driver.js";
 import { Topic, topic } from "./topic.js";
 import { TopicIterator } from "./topic-iterator.js";
+import type { Driver } from "./types.js";
 
 describe("Topic", () => {
-  let mockDriver: PubSubDriver;
+  let mockDriver: Driver;
   let consoleErrorSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {

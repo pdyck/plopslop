@@ -1,7 +1,7 @@
 import { EventEmitter } from "node:events";
-import type { MessageHandler, PubSubDriver } from "./driver.js";
+import type { Driver, MessageHandler } from "./types.js";
 
-export class EventEmitterDriver implements PubSubDriver {
+export class EventEmitterDriver implements Driver {
   private emitter: EventEmitter;
   private subscriptions: Map<
     string,
@@ -41,4 +41,8 @@ export class EventEmitterDriver implements PubSubDriver {
       this.subscriptions.delete(subscription);
     }
   }
+}
+
+export function eventEmitter() {
+  return new EventEmitterDriver();
 }

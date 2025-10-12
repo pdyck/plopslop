@@ -1,6 +1,6 @@
 import type z from "zod";
-import type { PubSubDriver } from "./driver.js";
 import type { Topic } from "./topic.js";
+import type { Driver } from "./types.js";
 
 export class TopicIterator<TSchema extends z.ZodType>
   implements AsyncIterableIterator<z.infer<TSchema>>
@@ -13,7 +13,7 @@ export class TopicIterator<TSchema extends z.ZodType>
   private done = false;
 
   constructor(
-    private readonly driver: PubSubDriver,
+    private readonly driver: Driver,
     topic: Topic<TSchema>,
   ) {
     void this.subscribe(topic);

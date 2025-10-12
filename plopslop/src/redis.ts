@@ -1,10 +1,10 @@
 import type { Cluster, RedisOptions } from "ioredis";
 import { Redis } from "ioredis";
-import type { MessageHandler, PubSubDriver } from "./driver.js";
+import type { Driver, MessageHandler } from "./types.js";
 
 export type RedisClient = Redis | Cluster;
 
-export class RedisDriver implements PubSubDriver {
+export class RedisDriver implements Driver {
   private publisher: RedisClient;
   private subscriber: RedisClient;
   private subscriptions: Map<
