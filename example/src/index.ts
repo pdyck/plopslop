@@ -1,8 +1,23 @@
-import { createPubSub, RedisDriver, topic } from "plopslop";
+import { createPubSub, redis, topic } from "plopslop";
 import { z } from "zod";
 
 const pubsub = createPubSub({
-  driver: new RedisDriver(),
+  driver: redis(),
+  plugins: [
+    {
+      name: "logging",
+      publish: async (_, __, next) => {
+        console.log("Pre publish");
+        await next();
+        console.log("Post publish");
+      },
+      subscribe: async (_, __, next) => {
+        console.log("Pre process");
+        await next();
+        console.log("Post process");
+      },
+    },
+  ],
   topics: {
     userCreated: topic({
       name: "user.created",

@@ -435,4 +435,95 @@ describe("Topic", () => {
       expect(mockDriver.unsubscribe).toHaveBeenCalledWith(subId);
     });
   });
+
+  describe("plugins", () => {
+    it("should execute plugin on publish", async () => {
+      const stringSchema = z.string();
+      const topicDef = topic({ name: "test-topic", schema: stringSchema });
+
+      const publishHook = vi.fn(async (_, __, next) => {
+        await next();
+      });
+
+      const plugin = {
+        name: "test-plugin",
+        publish: publishHook,
+      };
+
+      const testTopic = new Topic(mockDriver, topicDef, [plugin]);
+
+      await testTopic.publish("hello world");
+
+      expect(publishHook).toHaveBeenCalledWith(
+        JSON.stringify("hello world"),
+        { topic: "test-topic", message: "hello world" },
+        expect.any(Function),
+      );
+      expect(mockDriver.publish).toHaveBeenCalledWith(
+        "test-topic",
+        JSON.stringify("hello world"),
+      );
+    });
+
+    it("should execute plugin on subscribe", async () => {
+      const stringSchema = z.string();
+      const topicDef = topic({ name: "test-topic", schema: stringSchema });
+
+      const subscribeHook = vi.fn(async (_, __, next) => {
+        await next();
+      });
+
+      const plugin = {
+        name: "test-plugin",
+        subscribe: subscribeHook,
+      };
+
+      const testTopic = new Topic(mockDriver, topicDef, [plugin]);
+
+      const handler = vi.fn();
+      await testTopic.subscribe(handler);
+
+      const wrappedHandler = (mockDriver.subscribe as any).mock.calls[0][1];
+      await wrappedHandler(JSON.stringify("hello"));
+
+      expect(subscribeHook).toHaveBeenCalledWith(
+        JSON.stringify("hello"),
+        { topic: "test-topic", message: "hello" },
+        expect.any(Function),
+      );
+      expect(handler).toHaveBeenCalledWith("hello");
+    });
+
+    it("should chain multiple plugins in order", async () => {
+      const stringSchema = z.string();
+      const topicDef = topic({ name: "test-topic", schema: stringSchema });
+
+      const callOrder: string[] = [];
+
+      const plugin1 = {
+        name: "plugin-1",
+        publish: vi.fn(async (_, __, next) => {
+          callOrder.push("plugin-1");
+          await next();
+        }),
+      };
+
+      const plugin2 = {
+        name: "plugin-2",
+        publish: vi.fn(async (_, __, next) => {
+          callOrder.push("plugin-2");
+          await next();
+        }),
+      };
+
+      const testTopic = new Topic(mockDriver, topicDef, [plugin1, plugin2]);
+
+      await testTopic.publish("test");
+
+      expect(callOrder).toEqual(["plugin-1", "plugin-2"]);
+      expect(plugin1.publish).toHaveBeenCalled();
+      expect(plugin2.publish).toHaveBeenCalled();
+      expect(mockDriver.publish).toHaveBeenCalled();
+    });
+  });
 });

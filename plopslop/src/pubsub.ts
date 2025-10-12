@@ -13,7 +13,7 @@ export function createPubSub<
   const pubsub: Record<string, Topic<z.ZodType>> = {};
 
   for (const [key, definition] of Object.entries(topics)) {
-    pubsub[key] = new Topic(driver, definition);
+    pubsub[key] = new Topic(driver, definition, plugins);
   }
 
   return pubsub as PubSub<TTopics>;

@@ -89,3 +89,7 @@ export class RedisDriver implements Driver {
     }
   }
 }
+
+export function redis(options: RedisOptions = {}) {
+  return new RedisDriver(options);
+}
