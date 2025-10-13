@@ -1,11 +1,11 @@
 import { EventEmitter } from "node:events";
-import type { Driver, MessageHandler } from "./types.js";
+import type { Driver } from "./types.js";
 
 export class EventEmitterDriver implements Driver {
   private emitter: EventEmitter;
   private subscriptions: Map<
     string,
-    { topic: string; handler: MessageHandler }
+    { topic: string; handler: (message: string) => void | Promise<void> }
   >;
   private subscriptionCounter: number;
 
@@ -23,11 +23,14 @@ export class EventEmitterDriver implements Driver {
     this.subscriptions.clear();
   }
 
-  async publish(channel: string, message: string): Promise<void> {
-    this.emitter.emit(channel, message);
+  async publish(topic: string, message: string): Promise<void> {
+    this.emitter.emit(topic, message);
   }
 
-  async subscribe(topic: string, handler: MessageHandler): Promise<string> {
+  async subscribe(
+    topic: string,
+    handler: (message: string) => void | Promise<void>,
+  ): Promise<string> {
     const subscriptionId = `sub_${++this.subscriptionCounter}`;
     this.subscriptions.set(subscriptionId, { topic, handler });
     this.emitter.on(topic, handler);

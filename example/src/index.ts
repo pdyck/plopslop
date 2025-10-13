@@ -3,40 +3,51 @@ import { z } from "zod";
 
 const pubsub = createPubSub({
   driver: redis(),
+  context: z.object({
+    workspaceId: z.string().optional(),
+  }),
   plugins: [
     {
       name: "logging",
-      publish: async (_, __, next) => {
-        console.log("Pre publish");
+      publish: async (_, context, next) => {
+        console.log(`Publishing ${context.topic}`);
         await next();
-        console.log("Post publish");
       },
-      subscribe: async (_, __, next) => {
-        console.log("Pre process");
+      subscribe: async (_, context, next) => {
+        console.log(`Receiving ${context.topic}`);
         await next();
-        console.log("Post process");
       },
     },
   ],
   topics: {
     userCreated: topic({
       name: "user.created",
-      schema: z.string(),
+      schema: z.object({
+        name: z.string(),
+      }),
     }),
     userUpdated: topic({
       name: "user.updated",
-      schema: z.number(),
+      schema: z.object({
+        userId: z.number(),
+      }),
     }),
   },
 });
 
 (async () => {
-  for await (const message of pubsub.userCreated.subscribe()) {
-    console.log(`async iterator: ${message}`);
+  for await (const { payload } of pubsub.userCreated.subscribe()) {
+    console.log(`User "${payload.name}" was created.`);
+  }
+})();
+
+(async () => {
+  for await (const { payload } of pubsub.userUpdated.subscribe()) {
+    console.log(`User ${payload.userId} was updated.`);
   }
 })();
 
 setTimeout(() => {
-  pubsub.userCreated.publish("User X created!");
-  pubsub.userUpdated.publish(42);
+  pubsub.userCreated.publish({ name: "Peter" }, { workspaceId: "test" });
+  pubsub.userUpdated.publish({ userId: 42 });
 }, 1000);

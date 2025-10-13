@@ -32,11 +32,17 @@ describe("Topic", () => {
 
       await testTopic.publish("hello world");
 
-      expect(mockDriver.publish).toHaveBeenCalledWith(
-        "test-topic",
-        JSON.stringify("hello world"),
-      );
       expect(mockDriver.publish).toHaveBeenCalledTimes(1);
+      const publishCall = (mockDriver.publish as any).mock.calls[0];
+      expect(publishCall[0]).toBe("test-topic");
+
+      const message = JSON.parse(publishCall[1]);
+      expect(message.payload).toBe("hello world");
+      expect(message.context).toMatchObject({
+        id: expect.any(String),
+        timestamp: expect.any(Number),
+        topic: "test-topic",
+      });
     });
 
     it("should validate messages against schema before publishing", async () => {
@@ -46,10 +52,10 @@ describe("Topic", () => {
 
       await testTopic.publish(42);
 
-      expect(mockDriver.publish).toHaveBeenCalledWith(
-        "number-topic",
-        JSON.stringify(42),
-      );
+      const publishCall = (mockDriver.publish as any).mock.calls[0];
+      const message = JSON.parse(publishCall[1]);
+      expect(message.payload).toBe(42);
+      expect(message.context.topic).toBe("number-topic");
     });
 
     it("should reject invalid messages", async () => {
@@ -79,10 +85,10 @@ describe("Topic", () => {
 
       await testTopic.publish(user);
 
-      expect(mockDriver.publish).toHaveBeenCalledWith(
-        "users",
-        JSON.stringify(user),
-      );
+      const publishCall = (mockDriver.publish as any).mock.calls[0];
+      const message = JSON.parse(publishCall[1]);
+      expect(message.payload).toEqual(user);
+      expect(message.context.topic).toBe("users");
     });
 
     it("should handle array schemas", async () => {
@@ -92,10 +98,10 @@ describe("Topic", () => {
 
       await testTopic.publish([1, 2, 3, 4, 5]);
 
-      expect(mockDriver.publish).toHaveBeenCalledWith(
-        "numbers",
-        JSON.stringify([1, 2, 3, 4, 5]),
-      );
+      const publishCall = (mockDriver.publish as any).mock.calls[0];
+      const message = JSON.parse(publishCall[1]);
+      expect(message.payload).toEqual([1, 2, 3, 4, 5]);
+      expect(message.context.topic).toBe("numbers");
     });
 
     it("should handle nested schemas", async () => {
@@ -124,10 +130,10 @@ describe("Topic", () => {
 
       await testTopic.publish(data);
 
-      expect(mockDriver.publish).toHaveBeenCalledWith(
-        "nested",
-        JSON.stringify(data),
-      );
+      const publishCall = (mockDriver.publish as any).mock.calls[0];
+      const message = JSON.parse(publishCall[1]);
+      expect(message.payload).toEqual(data);
+      expect(message.context.topic).toBe("nested");
     });
   });
 
@@ -162,11 +168,22 @@ describe("Topic", () => {
       // Get the wrapped handler that was passed to driver.subscribe
       const wrappedHandler = (mockDriver.subscribe as any).mock.calls[0][1];
 
-      // Simulate receiving a message
-      const message = { id: 1, message: "test" };
-      wrappedHandler(JSON.stringify(message));
+      // Simulate receiving a message with envelope
+      const payload = { id: 1, message: "test" };
+      const envelope = {
+        payload,
+        context: { id: "123", timestamp: Date.now(), topic: "messages" },
+      };
+      await wrappedHandler(JSON.stringify(envelope));
 
-      expect(handler).toHaveBeenCalledWith(message);
+      expect(handler).toHaveBeenCalledWith(
+        payload,
+        expect.objectContaining({
+          id: "123",
+          topic: "messages",
+          timestamp: expect.any(Number),
+        }),
+      );
       expect(handler).toHaveBeenCalledTimes(1);
     });
 
@@ -181,11 +198,19 @@ describe("Topic", () => {
       const wrappedHandler = (mockDriver.subscribe as any).mock.calls[0][1];
 
       // Valid message
-      wrappedHandler(JSON.stringify(42));
-      expect(handler).toHaveBeenCalledWith(42);
+      const validEnvelope = {
+        payload: 42,
+        context: { id: "123", timestamp: Date.now(), topic: "numbers" },
+      };
+      await wrappedHandler(JSON.stringify(validEnvelope));
+      expect(handler).toHaveBeenCalledWith(42, expect.any(Object));
 
       // Invalid message
-      wrappedHandler(JSON.stringify("not a number"));
+      const invalidEnvelope = {
+        payload: "not a number",
+        context: { id: "124", timestamp: Date.now(), topic: "numbers" },
+      };
+      await wrappedHandler(JSON.stringify(invalidEnvelope));
       expect(handler).toHaveBeenCalledTimes(1); // Still only called once
     });
 
@@ -199,8 +224,12 @@ describe("Topic", () => {
 
       const wrappedHandler = (mockDriver.subscribe as any).mock.calls[0][1];
 
-      // Send invalid message (wrong type)
-      wrappedHandler(JSON.stringify(123));
+      // Send invalid message (wrong type in payload)
+      const invalidEnvelope = {
+        payload: 123,
+        context: { id: "123", timestamp: Date.now(), topic: "test-topic" },
+      };
+      await wrappedHandler(JSON.stringify(invalidEnvelope));
 
       expect(handler).not.toHaveBeenCalled();
       expect(consoleErrorSpy).toHaveBeenCalled();
@@ -224,7 +253,7 @@ describe("Topic", () => {
     });
 
     it("should handle schema validation errors", async () => {
-      const emailSchema = z.email();
+      const emailSchema = z.string().email();
       const topicDef = topic({ name: "emails", schema: emailSchema });
       const testTopic = new Topic(mockDriver, topicDef, new PluginChain([]));
 
@@ -234,11 +263,19 @@ describe("Topic", () => {
       const wrappedHandler = (mockDriver.subscribe as any).mock.calls[0][1];
 
       // Valid email
-      wrappedHandler(JSON.stringify("test@example.com"));
-      expect(handler).toHaveBeenCalledWith("test@example.com");
+      const validEnvelope = {
+        payload: "test@example.com",
+        context: { id: "123", timestamp: Date.now(), topic: "emails" },
+      };
+      await wrappedHandler(JSON.stringify(validEnvelope));
+      expect(handler).toHaveBeenCalledWith("test@example.com", expect.any(Object));
 
       // Invalid email format
-      wrappedHandler(JSON.stringify("not-an-email"));
+      const invalidEnvelope = {
+        payload: "not-an-email",
+        context: { id: "124", timestamp: Date.now(), topic: "emails" },
+      };
+      await wrappedHandler(JSON.stringify(invalidEnvelope));
       expect(handler).toHaveBeenCalledTimes(1); // Still only called once
 
       expect(consoleErrorSpy).toHaveBeenCalled();
@@ -344,9 +381,16 @@ describe("Topic", () => {
 
       // Simulate receiving the message
       const publishedMessage = (mockDriver.publish as any).mock.calls[0][1];
-      wrappedHandler(publishedMessage);
+      await wrappedHandler(publishedMessage);
 
-      expect(handler).toHaveBeenCalledWith(message);
+      expect(handler).toHaveBeenCalledWith(
+        message,
+        expect.objectContaining({
+          id: expect.any(String),
+          timestamp: expect.any(Number),
+          topic: "chat",
+        }),
+      );
     });
 
     it("should support multiple subscribers on same topic", async () => {
@@ -373,7 +417,7 @@ describe("Topic", () => {
     it("should maintain schema validation throughout the flow", async () => {
       const strictSchema = z.object({
         id: z.number().positive(),
-        email: z.email(),
+        email: z.string().email(),
       });
 
       const topicDef = topic({ name: "users", schema: strictSchema });
@@ -387,8 +431,9 @@ describe("Topic", () => {
       // Valid data
       const validUser = { id: 1, email: "test@example.com" };
       await testTopic.publish(validUser);
-      wrappedHandler(JSON.stringify(validUser));
-      expect(handler).toHaveBeenCalledWith(validUser);
+      const publishedMessage = (mockDriver.publish as any).mock.calls[0][1];
+      await wrappedHandler(publishedMessage);
+      expect(handler).toHaveBeenCalledWith(validUser, expect.any(Object));
 
       // Invalid data - negative id
       await expect(
@@ -396,7 +441,11 @@ describe("Topic", () => {
       ).rejects.toThrow();
 
       // Invalid data - bad email
-      wrappedHandler(JSON.stringify({ id: 2, email: "not-an-email" }));
+      const invalidEnvelope = {
+        payload: { id: 2, email: "not-an-email" },
+        context: { id: "123", timestamp: Date.now(), topic: "users" },
+      };
+      await wrappedHandler(JSON.stringify(invalidEnvelope));
       expect(handler).toHaveBeenCalledTimes(1); // Still only called once
     });
 
@@ -411,12 +460,20 @@ describe("Topic", () => {
       const wrappedHandler = (mockDriver.subscribe as any).mock.calls[0][1];
 
       // Send invalid message
-      wrappedHandler(JSON.stringify(123));
+      const invalidEnvelope = {
+        payload: 123,
+        context: { id: "123", timestamp: Date.now(), topic: "test-topic" },
+      };
+      await wrappedHandler(JSON.stringify(invalidEnvelope));
       expect(handler).not.toHaveBeenCalled();
 
       // Send valid message - subscription should still work
-      wrappedHandler(JSON.stringify("valid message"));
-      expect(handler).toHaveBeenCalledWith("valid message");
+      const validEnvelope = {
+        payload: "valid message",
+        context: { id: "124", timestamp: Date.now(), topic: "test-topic" },
+      };
+      await wrappedHandler(JSON.stringify(validEnvelope));
+      expect(handler).toHaveBeenCalledWith("valid message", expect.any(Object));
       expect(handler).toHaveBeenCalledTimes(1);
     });
 

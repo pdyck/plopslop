@@ -1,36 +1,59 @@
-import type z from "zod";
-import { PluginChain } from "./plugin-chain.js";
+import { z } from "zod";
+import type { PluginChain } from "./plugin-chain.js";
 import { TopicIterator } from "./topic-iterator.js";
 import type {
+  Context,
   Driver,
   MessageHandler,
   TopicDefinition,
 } from "./types.js";
 
-export class Topic<TSchema extends z.ZodType> {
+export class Topic<
+  TSchema extends z.ZodType,
+  TContext extends z.ZodType = z.ZodNever,
+> {
   constructor(
     private readonly driver: Driver,
     private readonly def: TopicDefinition<TSchema>,
-    private readonly pluginChain: PluginChain,
+    private readonly pluginChain: PluginChain<TContext>,
+    private readonly contextSchema?: TContext,
   ) {}
 
-  async publish(message: z.infer<TSchema>): Promise<void> {
-    const serialized = this.serialize(message);
-    await this.pluginChain.publish(
-      serialized,
-      { topic: this.def.name, message },
-      async () => {
-        await this.driver.publish(this.def.name, serialized);
-        return undefined;
-      },
-    );
+  async publish(
+    payload: z.infer<TSchema>,
+    customContext?: z.infer<TContext>,
+  ): Promise<void> {
+    const baseContext = {
+      id: crypto.randomUUID(),
+      timestamp: Date.now(),
+      topic: this.def.name,
+    };
+
+    if (customContext && this.contextSchema) {
+      this.contextSchema.parse(customContext);
+    }
+
+    const context = {
+      ...(customContext ?? {}),
+      ...baseContext,
+    } as Context<TContext>;
+
+    const validatedPayload = this.def.schema.parse(payload);
+
+    await this.pluginChain.publish(validatedPayload, context, async () => {
+      const message = JSON.stringify({ payload: validatedPayload, context });
+      await this.driver.publish(this.def.name, message);
+      return undefined;
+    });
   }
 
-  subscribe(handler: MessageHandler<z.infer<TSchema>>): Promise<string>;
-  subscribe(): TopicIterator<TSchema>;
   subscribe(
-    handler?: MessageHandler<z.infer<TSchema>>,
-  ): Promise<string> | TopicIterator<TSchema> {
+    handler: MessageHandler<z.infer<TSchema>, TContext>,
+  ): Promise<string>;
+  subscribe(): TopicIterator<TSchema, TContext>;
+  subscribe(
+    handler?: MessageHandler<z.infer<TSchema>, TContext>,
+  ): Promise<string> | TopicIterator<TSchema, TContext> {
     if (handler) {
       return this.subscribeWithHandler(handler);
     }
@@ -39,19 +62,15 @@ export class Topic<TSchema extends z.ZodType> {
   }
 
   private async subscribeWithHandler(
-    handler: MessageHandler<z.infer<TSchema>>,
+    handler: MessageHandler<z.infer<TSchema>, TContext>,
   ): Promise<string> {
     const wrapped = async (message: string) => {
       try {
-        const parsed = this.parse(message);
-        await this.pluginChain.subscribe(
-          message,
-          { topic: this.def.name, message: parsed },
-          async () => {
-            handler(parsed);
-            return undefined;
-          },
-        );
+        const { payload, context } = this.parse(message);
+        await this.pluginChain.subscribe(payload, context, async () => {
+          handler(payload, context);
+          return undefined;
+        });
       } catch (error) {
         console.error(
           `Failed to parse/validate message on topic "${this.def.name}":`,
@@ -67,14 +86,34 @@ export class Topic<TSchema extends z.ZodType> {
     return this.driver.unsubscribe(subscription);
   }
 
-  private serialize(message: z.infer<TSchema>) {
-    const parsed = this.def.schema.parse(message);
-    return JSON.stringify(parsed);
-  }
-
-  private parse(message: string) {
+  private parse(message: string): {
+    payload: z.infer<TSchema>;
+    context: Context<TContext>;
+  } {
     const parsed = JSON.parse(message);
-    return this.def.schema.parse(parsed);
+
+    if (!("payload" in parsed) || !("context" in parsed)) {
+      throw new Error("Invalid message format: missing payload or context");
+    }
+
+    const payload = this.def.schema.parse(parsed.payload);
+
+    const baseContextSchema = z.object({
+      id: z.string(),
+      timestamp: z.number(),
+      topic: z.string(),
+    });
+
+    baseContextSchema.parse(parsed.context);
+
+    if (this.contextSchema) {
+      this.contextSchema.parse(parsed.context);
+    }
+
+    return {
+      payload,
+      context: parsed.context as Context<TContext>,
+    };
   }
 }
 

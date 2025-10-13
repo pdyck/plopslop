@@ -1,12 +1,23 @@
 import type { z } from "zod";
 import type { Topic } from "./topic.js";
 import { TopicIterator } from "./topic-iterator.js";
-import type { Driver } from "./types.js";
+import type { Context, Driver } from "./types.js";
 
 describe("TopicIterator", () => {
   let mockDriver: Driver;
   let mockTopic: Topic<z.ZodString>;
-  let subscriberHandler: ((message: string) => void) | null = null;
+  let subscriberHandler: ((payload: string, context: Context) => void) | null =
+    null;
+
+  const createContext = (topic = "test-topic") => ({
+    id: "test-id",
+    timestamp: Date.now(),
+    topic,
+  });
+
+  const sendMessage = (payload: string) => {
+    subscriberHandler?.(payload, createContext());
+  };
 
   beforeEach(() => {
     subscriberHandler = null;
@@ -35,19 +46,19 @@ describe("TopicIterator", () => {
       await new Promise((resolve) => setTimeout(resolve, 0));
 
       // Simulate messages arriving
-      subscriberHandler?.("message1");
-      subscriberHandler?.("message2");
-      subscriberHandler?.("message3");
+      sendMessage("message1");
+      sendMessage("message2");
+      sendMessage("message3");
 
       const results: string[] = [];
       const result1 = await iterator.next();
-      if (!result1.done) results.push(result1.value);
+      if (!result1.done) results.push(result1.value.payload);
 
       const result2 = await iterator.next();
-      if (!result2.done) results.push(result2.value);
+      if (!result2.done) results.push(result2.value.payload);
 
       const result3 = await iterator.next();
-      if (!result3.done) results.push(result3.value);
+      if (!result3.done) results.push(result3.value.payload);
 
       expect(results).toEqual(["message1", "message2", "message3"]);
     });
@@ -68,15 +79,15 @@ describe("TopicIterator", () => {
       await new Promise((resolve) => setTimeout(resolve, 0));
 
       // Queue up messages
-      subscriberHandler?.("msg1");
-      subscriberHandler?.("msg2");
-      subscriberHandler?.("msg3");
+      sendMessage("msg1");
+      sendMessage("msg2");
+      sendMessage("msg3");
 
       const results: string[] = [];
       let count = 0;
 
-      for await (const message of iterator) {
-        results.push(message);
+      for await (const { payload } of iterator) {
+        results.push(payload);
         count++;
         if (count === 3) break; // Stop after 3 messages
       }
@@ -93,18 +104,27 @@ describe("TopicIterator", () => {
       await new Promise((resolve) => setTimeout(resolve, 0));
 
       // Send messages before calling next()
-      subscriberHandler?.("queued1");
-      subscriberHandler?.("queued2");
-      subscriberHandler?.("queued3");
+      sendMessage("queued1");
+      sendMessage("queued2");
+      sendMessage("queued3");
 
       // Now consume them
       const result1 = await iterator.next();
       const result2 = await iterator.next();
       const result3 = await iterator.next();
 
-      expect(result1).toEqual({ value: "queued1", done: false });
-      expect(result2).toEqual({ value: "queued2", done: false });
-      expect(result3).toEqual({ value: "queued3", done: false });
+      expect(result1).toEqual({
+        value: { payload: "queued1", context: expect.any(Object) },
+        done: false,
+      });
+      expect(result2).toEqual({
+        value: { payload: "queued2", context: expect.any(Object) },
+        done: false,
+      });
+      expect(result3).toEqual({
+        value: { payload: "queued3", context: expect.any(Object) },
+        done: false,
+      });
     });
 
     it("should consume queued messages in FIFO order", async () => {
@@ -114,7 +134,7 @@ describe("TopicIterator", () => {
 
       // Queue messages
       for (let i = 1; i <= 5; i++) {
-        subscriberHandler?.(`message${i}`);
+        sendMessage(`message${i}`);
       }
 
       // Consume in order
@@ -122,7 +142,7 @@ describe("TopicIterator", () => {
       for (let i = 0; i < 5; i++) {
         const result = await iterator.next();
         if (!result.done) {
-          results.push(result.value);
+          results.push(result.value.payload);
         }
       }
 
@@ -156,11 +176,14 @@ describe("TopicIterator", () => {
       expect(resolved).toBe(false);
 
       // Now send a message
-      subscriberHandler?.("delayed-message");
+      sendMessage("delayed-message");
 
       // Should now resolve
       const result = await nextPromise;
-      expect(result).toEqual({ value: "delayed-message", done: false });
+      expect(result).toEqual({
+        value: { payload: "delayed-message", context: expect.any(Object) },
+        done: false,
+      });
     });
 
     it("should resolve waiting promises when messages arrive", async () => {
@@ -174,9 +197,9 @@ describe("TopicIterator", () => {
       const promise3 = iterator.next();
 
       // Send messages to resolve them
-      subscriberHandler?.("msg1");
-      subscriberHandler?.("msg2");
-      subscriberHandler?.("msg3");
+      sendMessage("msg1");
+      sendMessage("msg2");
+      sendMessage("msg3");
 
       const [result1, result2, result3] = await Promise.all([
         promise1,
@@ -184,9 +207,18 @@ describe("TopicIterator", () => {
         promise3,
       ]);
 
-      expect(result1).toEqual({ value: "msg1", done: false });
-      expect(result2).toEqual({ value: "msg2", done: false });
-      expect(result3).toEqual({ value: "msg3", done: false });
+      expect(result1).toEqual({
+        value: { payload: "msg1", context: expect.any(Object) },
+        done: false,
+      });
+      expect(result2).toEqual({
+        value: { payload: "msg2", context: expect.any(Object) },
+        done: false,
+      });
+      expect(result3).toEqual({
+        value: { payload: "msg3", context: expect.any(Object) },
+        done: false,
+      });
     });
 
     it("should resolve waiters in FIFO order", async () => {
@@ -198,19 +230,19 @@ describe("TopicIterator", () => {
 
       // Create waiters
       const waiter1 = iterator.next().then((r) => {
-        if (!r.done) results.push(`w1:${r.value}`);
+        if (!r.done) results.push(`w1:${r.value.payload}`);
       });
       const waiter2 = iterator.next().then((r) => {
-        if (!r.done) results.push(`w2:${r.value}`);
+        if (!r.done) results.push(`w2:${r.value.payload}`);
       });
       const waiter3 = iterator.next().then((r) => {
-        if (!r.done) results.push(`w3:${r.value}`);
+        if (!r.done) results.push(`w3:${r.value.payload}`);
       });
 
       // Send messages
-      subscriberHandler?.("first");
-      subscriberHandler?.("second");
-      subscriberHandler?.("third");
+      sendMessage("first");
+      sendMessage("second");
+      sendMessage("third");
 
       await Promise.all([waiter1, waiter2, waiter3]);
 
@@ -270,8 +302,8 @@ describe("TopicIterator", () => {
 
       await new Promise((resolve) => setTimeout(resolve, 0));
 
-      subscriberHandler?.("msg1");
-      subscriberHandler?.("msg2");
+      sendMessage("msg1");
+      sendMessage("msg2");
 
       let count = 0;
       for await (const _message of iterator) {
@@ -293,7 +325,7 @@ describe("TopicIterator", () => {
       await iterator.return();
 
       // Try to send message
-      subscriberHandler?.("late-message");
+      sendMessage("late-message");
 
       // Should still return done
       const result = await iterator.next();
@@ -340,24 +372,24 @@ describe("TopicIterator", () => {
       await new Promise((resolve) => setTimeout(resolve, 0));
 
       // Queue some messages
-      subscriberHandler?.("queued1");
-      subscriberHandler?.("queued2");
+      sendMessage("queued1");
+      sendMessage("queued2");
 
       // Consume queued messages
       const result1 = await iterator.next();
-      expect(result1.value).toBe("queued1");
+      expect(result1.value?.payload).toBe("queued1");
 
       // Start waiting
       const result2 = await iterator.next();
       const waiter = iterator.next();
 
       // Send message to resolve waiter
-      subscriberHandler?.("waited");
+      sendMessage("waited");
 
       const result3 = await waiter;
 
-      expect(result2.value).toBe("queued2");
-      expect(result3.value).toBe("waited");
+      expect(result2.value?.payload).toBe("queued2");
+      expect(result3.value?.payload).toBe("waited");
     });
   });
 

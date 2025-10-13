@@ -1,6 +1,6 @@
 import type { Cluster, RedisOptions } from "ioredis";
 import { Redis } from "ioredis";
-import type { Driver, MessageHandler } from "./types.js";
+import type { Driver } from "./types.js";
 
 export type RedisClient = Redis | Cluster;
 
@@ -9,7 +9,7 @@ export class RedisDriver implements Driver {
   private subscriber: RedisClient;
   private subscriptions: Map<
     string,
-    { topic: string; handler: MessageHandler }
+    { topic: string; handler: (message: string) => void | Promise<void> }
   >;
   private subscriptionCounter: number;
   private connected: boolean;
@@ -24,7 +24,7 @@ export class RedisDriver implements Driver {
     this.subscriber.on("message", (topic: string, message: string) => {
       for (const sub of this.subscriptions.values()) {
         if (sub.topic === topic) {
-          sub.handler(message);
+          void sub.handler(message);
         }
       }
     });
@@ -55,7 +55,10 @@ export class RedisDriver implements Driver {
     await this.publisher.publish(topic, message);
   }
 
-  async subscribe(topic: string, handler: MessageHandler): Promise<string> {
+  async subscribe(
+    topic: string,
+    handler: (message: string) => void | Promise<void>,
+  ): Promise<string> {
     const subscriptionId = `redis_sub_${++this.subscriptionCounter}`;
 
     const topicHasSubscriptions = Array.from(this.subscriptions.values()).some(

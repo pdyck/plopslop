@@ -1,46 +1,70 @@
 import type z from "zod";
 import type { Topic } from "./topic.js";
-import type { Driver } from "./types.js";
+import type { Context, Driver } from "./types.js";
 
-export class TopicIterator<TSchema extends z.ZodType>
-  implements AsyncIterableIterator<z.infer<TSchema>>
+export class TopicIterator<
+  TSchema extends z.ZodType,
+  TContext extends z.ZodType = z.ZodNever,
+> implements
+    AsyncIterableIterator<{
+      payload: z.infer<TSchema>;
+      context: Context<TContext>;
+    }>
 {
-  private readonly queue: z.infer<TSchema>[] = [];
+  private readonly queue: Array<{
+    payload: z.infer<TSchema>;
+    context: Context<TContext>;
+  }> = [];
   private readonly waiters: Array<
-    (value: IteratorResult<z.infer<TSchema>>) => void
+    (
+      value: IteratorResult<{
+        payload: z.infer<TSchema>;
+        context: Context<TContext>;
+      }>,
+    ) => void
   > = [];
   private subscriptionId: string | null = null;
   private done = false;
 
   constructor(
     private readonly driver: Driver,
-    topic: Topic<TSchema>,
+    topic: Topic<TSchema, TContext>,
   ) {
     void this.subscribe(topic);
   }
 
-  private async subscribe(topic: Topic<TSchema>): Promise<void> {
-    const handler = (message: z.infer<TSchema>) => {
+  private async subscribe(topic: Topic<TSchema, TContext>): Promise<void> {
+    const handler = (payload: z.infer<TSchema>, context: Context<TContext>) => {
       if (this.done) return;
+
+      const value = { payload, context };
 
       if (this.waiters.length > 0) {
         const resolve = this.waiters.shift();
         if (resolve) {
-          resolve({ value: message, done: false });
+          resolve({ value, done: false });
         }
       } else {
-        this.queue.push(message);
+        this.queue.push(value);
       }
     };
 
     this.subscriptionId = await topic.subscribe(handler);
   }
 
-  [Symbol.asyncIterator](): AsyncIterableIterator<z.infer<TSchema>> {
+  [Symbol.asyncIterator](): AsyncIterableIterator<{
+    payload: z.infer<TSchema>;
+    context: Context<TContext>;
+  }> {
     return this;
   }
 
-  async next(): Promise<IteratorResult<z.infer<TSchema>>> {
+  async next(): Promise<
+    IteratorResult<{
+      payload: z.infer<TSchema>;
+      context: Context<TContext>;
+    }>
+  > {
     if (this.done) {
       return { value: undefined, done: true };
     }
@@ -57,7 +81,12 @@ export class TopicIterator<TSchema extends z.ZodType>
     });
   }
 
-  async return(): Promise<IteratorResult<z.infer<TSchema>>> {
+  async return(): Promise<
+    IteratorResult<{
+      payload: z.infer<TSchema>;
+      context: Context<TContext>;
+    }>
+  > {
     await this.cleanup();
     return { value: undefined, done: true };
   }
