@@ -1,9 +1,9 @@
 import type z from "zod";
+import { PluginChain } from "./plugin-chain.js";
 import { TopicIterator } from "./topic-iterator.js";
 import type {
   Driver,
   MessageHandler,
-  Plugin,
   TopicDefinition,
 } from "./types.js";
 
@@ -11,13 +11,12 @@ export class Topic<TSchema extends z.ZodType> {
   constructor(
     private readonly driver: Driver,
     private readonly def: TopicDefinition<TSchema>,
-    private readonly plugins: Plugin[] = [],
+    private readonly pluginChain: PluginChain,
   ) {}
 
   async publish(message: z.infer<TSchema>): Promise<void> {
     const serialized = this.serialize(message);
-    await this.executePluginChain(
-      "publish",
+    await this.pluginChain.publish(
       serialized,
       { topic: this.def.name, message },
       async () => {
@@ -45,8 +44,7 @@ export class Topic<TSchema extends z.ZodType> {
     const wrapped = async (message: string) => {
       try {
         const parsed = this.parse(message);
-        await this.executePluginChain(
-          "subscribe",
+        await this.pluginChain.subscribe(
           message,
           { topic: this.def.name, message: parsed },
           async () => {
@@ -77,41 +75,6 @@ export class Topic<TSchema extends z.ZodType> {
   private parse(message: string) {
     const parsed = JSON.parse(message);
     return this.def.schema.parse(parsed);
-  }
-
-  private async executePluginChain(
-    type: "publish" | "subscribe",
-    message: string,
-    context: Record<string, unknown>,
-    finalAction: () => Promise<string | undefined>,
-  ): Promise<string | undefined> {
-    const pluginsWithHook = this.plugins.filter((p) => p[type]);
-
-    if (pluginsWithHook.length === 0) {
-      return finalAction();
-    }
-
-    let index = 0;
-    let result: string | undefined;
-
-    const next = async (): Promise<void> => {
-      if (index >= pluginsWithHook.length) {
-        result = await finalAction();
-        return;
-      }
-
-      const plugin = pluginsWithHook[index++];
-      const hook = plugin[type];
-
-      if (hook) {
-        await hook(message, context, next);
-      } else {
-        await next();
-      }
-    };
-
-    await next();
-    return result;
   }
 }
 
