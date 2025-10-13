@@ -5,13 +5,15 @@
   "type": "module",
   "scripts": {
     "build": "tsc",
-    "start": "node dist/index.js"
+    "start": "node dist/index.js",
+    "dev": "tsx watch src/index.ts"
   },
   "dependencies": {
     "plopslop": "workspace:*",
     "zod": "^4.1.12"
   },
   "devDependencies": {
+    "tsx": "^4.19.2",
     "typescript": "catalog:"
   }
 }
