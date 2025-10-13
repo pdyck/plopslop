@@ -1,4 +1,4 @@
-import { createPubSub, redis, topic } from "plopslop";
+import { createPubSub, redis } from "plopslop";
 import { z } from "zod";
 
 const pubsub = createPubSub({
@@ -20,18 +20,18 @@ const pubsub = createPubSub({
     },
   ],
   topics: {
-    userCreated: topic({
+    userCreated: {
       name: "user.created",
       schema: z.object({
         name: z.string(),
       }),
-    }),
-    userUpdated: topic({
+    },
+    userUpdated: {
       name: "user.updated",
       schema: z.object({
         userId: z.number(),
       }),
-    }),
+    },
   },
 });
 

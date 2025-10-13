@@ -116,9 +116,3 @@ export class Topic<
     };
   }
 }
-
-export function topic<TSchema extends z.ZodType>(
-  topic: TopicDefinition<TSchema>,
-): TopicDefinition<TSchema> {
-  return topic;
-}
