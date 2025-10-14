@@ -1,4 +1,5 @@
-import { createPubSub, redis } from "plopslop";
+import { createPubSub } from "@plopslop/core";
+import { redis } from "@plopslop/redis";
 import { z } from "zod";
 
 const pubsub = createPubSub({
@@ -7,13 +8,11 @@ const pubsub = createPubSub({
     {
       name: "logging",
       publish: async (_, context, next) => {
-        // Plugin can add dynamic fields to context
-        context.requestId = crypto.randomUUID();
-        console.log(`Publishing ${context.topic} [${context.requestId}]`);
+        console.log(`Publishing ${context.topic} [${context.id}]`);
         await next();
       },
       subscribe: async (_, context, next) => {
-        console.log(`Receiving ${context.topic} [${context.requestId}]`);
+        console.log(`Receiving ${context.topic} [${context.id}]`);
         await next();
       },
     },

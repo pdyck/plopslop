@@ -9,7 +9,9 @@
     "dev": "tsx watch src/index.ts"
   },
   "dependencies": {
-    "plopslop": "workspace:*",
+    "@plopslop/core": "workspace:*",
+    "@plopslop/redis": "workspace:*",
+    "ioredis": "^5.4.2",
     "zod": "^4.1.12"
   },
   "devDependencies": {
