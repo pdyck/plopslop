@@ -8,7 +8,10 @@
   "exclude": ["node_modules"],
   "references": [
     {
-      "path": "../plopslop"
+      "path": "../packages/core"
+    },
+    {
+      "path": "../packages/redis"
     }
   ]
 }
