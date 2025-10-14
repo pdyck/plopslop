@@ -3,18 +3,17 @@ import { z } from "zod";
 
 const pubsub = createPubSub({
   driver: redis(),
-  context: z.object({
-    workspaceId: z.string().optional(),
-  }),
   plugins: [
     {
       name: "logging",
       publish: async (_, context, next) => {
-        console.log(`Publishing ${context.topic}`);
+        // Plugin can add dynamic fields to context
+        context.requestId = crypto.randomUUID();
+        console.log(`Publishing ${context.topic} [${context.requestId}]`);
         await next();
       },
       subscribe: async (_, context, next) => {
-        console.log(`Receiving ${context.topic}`);
+        console.log(`Receiving ${context.topic} [${context.requestId}]`);
         await next();
       },
     },
@@ -48,6 +47,6 @@ const pubsub = createPubSub({
 })();
 
 setTimeout(() => {
-  pubsub.userCreated.publish({ name: "Peter" }, { workspaceId: "test" });
+  pubsub.userCreated.publish({ name: "Peter" });
   pubsub.userUpdated.publish({ userId: 42 });
 }, 1000);

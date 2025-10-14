@@ -1,24 +1,22 @@
 import type z from "zod";
 import type { Topic } from "./topic.js";
 
-export interface BaseContext {
+export interface Context {
   id: string;
   timestamp: number;
   topic: string;
+  [key: string]: unknown;
 }
 
-export type Context<TContext extends z.ZodType = z.ZodNever> =
-  TContext extends z.ZodNever ? BaseContext : BaseContext & z.infer<TContext>;
-
-export type Message<TPayload extends z.ZodType, TContext extends z.ZodType> = {
+export type Message<TPayload extends z.ZodType> = {
   payload: z.infer<TPayload>;
-  context: Context<TContext>;
+  context: Context;
 };
 
-export type MessageHandler<
-  TPayload = unknown,
-  TContext extends z.ZodType = z.ZodNever,
-> = (payload: TPayload, context: Context<TContext>) => void;
+export type MessageHandler<TPayload = unknown> = (
+  payload: TPayload,
+  context: Context,
+) => void;
 
 export interface Driver {
   connect(): Promise<void>;
@@ -31,16 +29,16 @@ export interface Driver {
   unsubscribe(subscription: string): Promise<void>;
 }
 
-export type PluginHook<TContext extends z.ZodType = z.ZodNever> = <TPayload>(
+export type PluginHook = <TPayload>(
   payload: TPayload,
-  context: Context<TContext>,
+  context: Context,
   next: () => Promise<void>,
 ) => Promise<void>;
 
-export interface Plugin<TContext extends z.ZodType = z.ZodNever> {
+export interface Plugin {
   name: string;
-  publish?: PluginHook<TContext>;
-  subscribe?: PluginHook<TContext>;
+  publish?: PluginHook;
+  subscribe?: PluginHook;
 }
 
 export interface TopicDefinition<TSchema extends z.ZodType> {
@@ -50,17 +48,13 @@ export interface TopicDefinition<TSchema extends z.ZodType> {
 
 export interface PubSubOptions<
   TTopics extends Record<string, TopicDefinition<z.ZodType>>,
-  TContext extends z.ZodType = z.ZodNever,
 > {
   driver?: Driver;
-  context?: TContext;
-  plugins?: Plugin<TContext>[];
+  plugins?: Plugin[];
   topics: TTopics;
 }
 
-export type PubSub<
-  TTopics extends Record<string, TopicDefinition<z.ZodType>>,
-  TContext extends z.ZodType = z.ZodNever,
-> = {
-  [K in keyof TTopics]: Topic<TTopics[K]["schema"], TContext>;
-};
+export type PubSub<TTopics extends Record<string, TopicDefinition<z.ZodType>>> =
+  {
+    [K in keyof TTopics]: Topic<TTopics[K]["schema"]>;
+  };

@@ -1,12 +1,11 @@
-import type z from "zod";
 import type { Context, Plugin } from "./types.js";
 
-export class PluginChain<TContext extends z.ZodType = z.ZodNever> {
-  constructor(private readonly plugins: Plugin<TContext>[]) {}
+export class PluginChain {
+  constructor(private readonly plugins: Plugin[]) {}
 
   async publish<TPayload>(
     payload: TPayload,
-    context: Context<TContext>,
+    context: Context,
     finalAction: () => Promise<string | undefined>,
   ): Promise<string | undefined> {
     return this.executeChain("publish", payload, context, finalAction);
@@ -14,7 +13,7 @@ export class PluginChain<TContext extends z.ZodType = z.ZodNever> {
 
   async subscribe<TPayload>(
     payload: TPayload,
-    context: Context<TContext>,
+    context: Context,
     finalAction: () => Promise<string | undefined>,
   ): Promise<string | undefined> {
     return this.executeChain("subscribe", payload, context, finalAction);
@@ -23,7 +22,7 @@ export class PluginChain<TContext extends z.ZodType = z.ZodNever> {
   private async executeChain<TPayload>(
     hookType: "publish" | "subscribe",
     payload: TPayload,
-    context: Context<TContext>,
+    context: Context,
     finalAction: () => Promise<string | undefined>,
   ): Promise<string | undefined> {
     const pluginsWithHook = this.plugins.filter((p) => p[hookType]);

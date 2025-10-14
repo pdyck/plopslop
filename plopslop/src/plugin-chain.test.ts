@@ -1,4 +1,3 @@
-import type z from "zod";
 import { PluginChain } from "./plugin-chain.js";
 import type { Plugin } from "./types.js";
 
@@ -7,7 +6,7 @@ describe("PluginChain", () => {
     it("should execute publish hooks in order", async () => {
       const callOrder: string[] = [];
 
-      const plugin1: Plugin<z.ZodNever> = {
+      const plugin1: Plugin = {
         name: "plugin-1",
         publish: vi.fn(async (_, __, next) => {
           callOrder.push("plugin-1");
@@ -15,7 +14,7 @@ describe("PluginChain", () => {
         }),
       };
 
-      const plugin2: Plugin<z.ZodNever> = {
+      const plugin2: Plugin = {
         name: "plugin-2",
         publish: vi.fn(async (_, __, next) => {
           callOrder.push("plugin-2");
@@ -23,7 +22,7 @@ describe("PluginChain", () => {
         }),
       };
 
-      const chain = new PluginChain<z.ZodNever>([plugin1, plugin2]);
+      const chain = new PluginChain([plugin1, plugin2]);
       const finalAction = vi.fn(async () => {
         callOrder.push("final");
         return undefined;
@@ -42,14 +41,14 @@ describe("PluginChain", () => {
     });
 
     it("should pass payload and context to each plugin", async () => {
-      const plugin: Plugin<z.ZodNever> = {
+      const plugin: Plugin = {
         name: "test-plugin",
         publish: vi.fn(async (_, __, next) => {
           await next();
         }),
       };
 
-      const chain = new PluginChain<z.ZodNever>([plugin]);
+      const chain = new PluginChain([plugin]);
       const finalAction = vi.fn(async () => undefined);
       const payload = { data: "test-data" };
       const context = { id: "123", timestamp: Date.now(), topic: "test-topic" };

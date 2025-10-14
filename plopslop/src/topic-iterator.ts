@@ -2,24 +2,22 @@ import type z from "zod";
 import type { Topic } from "./topic.js";
 import type { Context, Driver } from "./types.js";
 
-export class TopicIterator<
-  TSchema extends z.ZodType,
-  TContext extends z.ZodType = z.ZodNever,
-> implements
+export class TopicIterator<TSchema extends z.ZodType>
+  implements
     AsyncIterableIterator<{
       payload: z.infer<TSchema>;
-      context: Context<TContext>;
+      context: Context;
     }>
 {
   private readonly queue: Array<{
     payload: z.infer<TSchema>;
-    context: Context<TContext>;
+    context: Context;
   }> = [];
   private readonly waiters: Array<
     (
       value: IteratorResult<{
         payload: z.infer<TSchema>;
-        context: Context<TContext>;
+        context: Context;
       }>,
     ) => void
   > = [];
@@ -28,13 +26,13 @@ export class TopicIterator<
 
   constructor(
     private readonly driver: Driver,
-    topic: Topic<TSchema, TContext>,
+    topic: Topic<TSchema>,
   ) {
     void this.subscribe(topic);
   }
 
-  private async subscribe(topic: Topic<TSchema, TContext>): Promise<void> {
-    const handler = (payload: z.infer<TSchema>, context: Context<TContext>) => {
+  private async subscribe(topic: Topic<TSchema>): Promise<void> {
+    const handler = (payload: z.infer<TSchema>, context: Context) => {
       if (this.done) return;
 
       const value = { payload, context };
@@ -54,7 +52,7 @@ export class TopicIterator<
 
   [Symbol.asyncIterator](): AsyncIterableIterator<{
     payload: z.infer<TSchema>;
-    context: Context<TContext>;
+    context: Context;
   }> {
     return this;
   }
@@ -62,7 +60,7 @@ export class TopicIterator<
   async next(): Promise<
     IteratorResult<{
       payload: z.infer<TSchema>;
-      context: Context<TContext>;
+      context: Context;
     }>
   > {
     if (this.done) {
@@ -84,7 +82,7 @@ export class TopicIterator<
   async return(): Promise<
     IteratorResult<{
       payload: z.infer<TSchema>;
-      context: Context<TContext>;
+      context: Context;
     }>
   > {
     await this.cleanup();

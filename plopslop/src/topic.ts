@@ -8,35 +8,19 @@ import type {
   TopicDefinition,
 } from "./types.js";
 
-export class Topic<
-  TSchema extends z.ZodType,
-  TContext extends z.ZodType = z.ZodNever,
-> {
+export class Topic<TSchema extends z.ZodType> {
   constructor(
     private readonly driver: Driver,
     private readonly def: TopicDefinition<TSchema>,
-    private readonly pluginChain: PluginChain<TContext>,
-    private readonly contextSchema?: TContext,
+    private readonly pluginChain: PluginChain,
   ) {}
 
-  async publish(
-    payload: z.infer<TSchema>,
-    customContext?: z.infer<TContext>,
-  ): Promise<void> {
-    const baseContext = {
+  async publish(payload: z.infer<TSchema>): Promise<void> {
+    const context: Context = {
       id: crypto.randomUUID(),
       timestamp: Date.now(),
       topic: this.def.name,
     };
-
-    if (customContext && this.contextSchema) {
-      this.contextSchema.parse(customContext);
-    }
-
-    const context = {
-      ...(customContext ?? {}),
-      ...baseContext,
-    } as Context<TContext>;
 
     const validatedPayload = this.def.schema.parse(payload);
 
@@ -47,13 +31,11 @@ export class Topic<
     });
   }
 
+  subscribe(handler: MessageHandler<z.infer<TSchema>>): Promise<string>;
+  subscribe(): TopicIterator<TSchema>;
   subscribe(
-    handler: MessageHandler<z.infer<TSchema>, TContext>,
-  ): Promise<string>;
-  subscribe(): TopicIterator<TSchema, TContext>;
-  subscribe(
-    handler?: MessageHandler<z.infer<TSchema>, TContext>,
-  ): Promise<string> | TopicIterator<TSchema, TContext> {
+    handler?: MessageHandler<z.infer<TSchema>>,
+  ): Promise<string> | TopicIterator<TSchema> {
     if (handler) {
       return this.subscribeWithHandler(handler);
     }
@@ -62,7 +44,7 @@ export class Topic<
   }
 
   private async subscribeWithHandler(
-    handler: MessageHandler<z.infer<TSchema>, TContext>,
+    handler: MessageHandler<z.infer<TSchema>>,
   ): Promise<string> {
     const wrapped = async (message: string) => {
       try {
@@ -86,9 +68,9 @@ export class Topic<
     return this.driver.unsubscribe(subscription);
   }
 
-  private parse(message: string): {
+  parse(message: string): {
     payload: z.infer<TSchema>;
-    context: Context<TContext>;
+    context: Context;
   } {
     const parsed = JSON.parse(message);
 
@@ -98,21 +80,19 @@ export class Topic<
 
     const payload = this.def.schema.parse(parsed.payload);
 
-    const baseContextSchema = z.object({
-      id: z.string(),
-      timestamp: z.number(),
-      topic: z.string(),
-    });
+    const contextSchema = z
+      .object({
+        id: z.string(),
+        timestamp: z.number(),
+        topic: z.string(),
+      })
+      .loose();
 
-    baseContextSchema.parse(parsed.context);
-
-    if (this.contextSchema) {
-      this.contextSchema.parse(parsed.context);
-    }
+    contextSchema.parse(parsed.context);
 
     return {
       payload,
-      context: parsed.context as Context<TContext>,
+      context: parsed.context as Context,
     };
   }
 }

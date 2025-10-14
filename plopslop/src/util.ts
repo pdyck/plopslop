@@ -1,9 +1,7 @@
 import type { z } from "zod";
 import type { Plugin, TopicDefinition } from "./types.js";
 
-export function definePlugin<TContext extends z.ZodType = z.ZodNever>(
-  plugin: Plugin<TContext>,
-): Plugin<TContext> {
+export function definePlugin(plugin: Plugin): Plugin {
   return plugin;
 }
 

@@ -6,19 +6,17 @@ import type { PubSub, PubSubOptions, TopicDefinition } from "./types.js";
 
 export function createPubSub<
   TTopics extends Record<string, TopicDefinition<z.ZodType>>,
-  TContext extends z.ZodType = z.ZodNever,
 >({
   driver = eventEmitter(),
   plugins = [],
   topics,
-  context,
-}: PubSubOptions<TTopics, TContext>): PubSub<TTopics, TContext> {
-  const pubsub: Record<string, Topic<z.ZodType, TContext>> = {};
-  const pluginChain = new PluginChain<TContext>(plugins);
+}: PubSubOptions<TTopics>): PubSub<TTopics> {
+  const pubsub: Record<string, Topic<z.ZodType>> = {};
+  const pluginChain = new PluginChain(plugins);
 
   for (const [key, definition] of Object.entries(topics)) {
-    pubsub[key] = new Topic(driver, definition, pluginChain, context);
+    pubsub[key] = new Topic(driver, definition, pluginChain);
   }
 
-  return pubsub as PubSub<TTopics, TContext>;
+  return pubsub as PubSub<TTopics>;
 }
