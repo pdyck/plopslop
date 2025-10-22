@@ -4,7 +4,6 @@ import { createPubSub } from "@plopslop/core";
 import { redis } from "@plopslop/redis";
 import { Hono } from "hono";
 import { html } from "hono/html";
-import type { FC, PropsWithChildren } from "hono/jsx";
 import z from "zod";
 
 const MessageSchema = z.object({
