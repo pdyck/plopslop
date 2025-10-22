@@ -1,11 +1,12 @@
 packages:
-  - packages/*
-  - example
   - examples/*
+  - packages/*
 
 catalog:
+  ioredis: ^5.4.2
   typescript: ^5.9.3
   vitest: ^3.2.4
   vite-tsconfig-paths: ^5.1.4
   "@biomejs/biome": ^2.2.5
   turbo: ^2.5.8
+  zod: ^4.1.12
