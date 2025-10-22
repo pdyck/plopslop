@@ -9,7 +9,7 @@ export default defineConfig({
   },
   plugins: [
     tsConfigPaths(),
-    tanstackStart({ spa: { enabled: true } }),
+    tanstackStart(),
     viteReact(),
   ],
 });
