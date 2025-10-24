@@ -1,5 +1,5 @@
 {
-  "name": "@plopslop/redis",
+  "name": "@plopslop/otel",
   "version": "0.1.0",
   "type": "module",
   "main": "./dist/index.js",
@@ -20,11 +20,11 @@
     "test": "vitest run"
   },
   "peerDependencies": {
-    "@plopslop/core": "workspace:*",
-    "ioredis": "catalog:"
+    "@opentelemetry/api": "^1.0.0",
+    "@plopslop/core": "workspace:*"
   },
   "devDependencies": {
-    "@types/node": "^24.7.0",
+    "@types/node": "24.7.0",
     "typescript": "catalog:",
     "vite-tsconfig-paths": "catalog:",
     "vitest": "catalog:"
