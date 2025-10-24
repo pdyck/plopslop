@@ -4,6 +4,7 @@ import { TopicIterator } from "./topic-iterator.js";
 import type {
   Context,
   Driver,
+  IteratorOptions,
   MessageHandler,
   TopicDefinition,
 } from "./types.js";
@@ -31,21 +32,7 @@ export class Topic<TSchema extends z.ZodType> {
     });
   }
 
-  subscribe(handler: MessageHandler<z.infer<TSchema>>): Promise<string>;
-  subscribe(): TopicIterator<TSchema>;
-  subscribe(
-    handler?: MessageHandler<z.infer<TSchema>>,
-  ): Promise<string> | TopicIterator<TSchema> {
-    if (handler) {
-      return this.subscribeWithHandler(handler);
-    }
-
-    return new TopicIterator(this.driver, this);
-  }
-
-  private async subscribeWithHandler(
-    handler: MessageHandler<z.infer<TSchema>>,
-  ): Promise<string> {
+  async subscribe(handler: MessageHandler<z.infer<TSchema>>): Promise<string> {
     const wrapped = async (message: string) => {
       try {
         const { payload, context } = this.parse(message);
@@ -66,6 +53,10 @@ export class Topic<TSchema extends z.ZodType> {
 
   async unsubscribe(subscription: string): Promise<void> {
     return this.driver.unsubscribe(subscription);
+  }
+
+  stream(options?: IteratorOptions<TSchema>): TopicIterator<TSchema> {
+    return new TopicIterator(this.driver, this, options);
   }
 
   parse(message: string): {

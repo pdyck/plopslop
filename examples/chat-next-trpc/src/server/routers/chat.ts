@@ -9,8 +9,10 @@ export const chatRouter = router({
       return { success: true };
     }),
 
-  onMessage: publicProcedure.subscription(async function* () {
-    for await (const { payload } of pubsub.messageReceived.subscribe()) {
+  onMessage: publicProcedure.subscription(async function* (opts) {
+    for await (const { payload } of pubsub.messageReceived.stream({
+      signal: opts.signal,
+    })) {
       yield payload;
     }
   }),

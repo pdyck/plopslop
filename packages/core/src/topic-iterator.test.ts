@@ -422,4 +422,236 @@ describe("TopicIterator", () => {
       expect(mockDriver.unsubscribe).toHaveBeenCalledWith("sub-123");
     });
   });
+
+  describe("Iterator Options", () => {
+    describe("filter option", () => {
+      it("should filter messages with sync filter function", async () => {
+        const iterator = new TopicIterator(mockDriver, mockTopic, {
+          filter: (payload) => (payload as string).startsWith("keep"),
+        });
+
+        await new Promise((resolve) => setTimeout(resolve, 0));
+
+        sendMessage("keep1");
+        sendMessage("skip1");
+        sendMessage("keep2");
+        sendMessage("skip2");
+        sendMessage("keep3");
+
+        const result1 = await iterator.next();
+        const result2 = await iterator.next();
+        const result3 = await iterator.next();
+
+        expect(result1.value?.payload).toBe("keep1");
+        expect(result2.value?.payload).toBe("keep2");
+        expect(result3.value?.payload).toBe("keep3");
+
+        await iterator.return();
+      });
+
+      it("should filter messages with async filter function", async () => {
+        const iterator = new TopicIterator(mockDriver, mockTopic, {
+          filter: async (payload) => {
+            await new Promise((resolve) => setTimeout(resolve, 1));
+            return (payload as string).startsWith("match");
+          },
+        });
+
+        await new Promise((resolve) => setTimeout(resolve, 0));
+
+        sendMessage("match1");
+        sendMessage("skip");
+        sendMessage("match2");
+
+        // First call should get "match1" (passes filter)
+        const result1 = await iterator.next();
+        expect(result1.value?.payload).toBe("match1");
+
+        // Second call should skip "skip" and get "match2"
+        const result2 = await iterator.next();
+        expect(result2.value?.payload).toBe("match2");
+
+        await iterator.return();
+      });
+
+      it("should filter based on context", async () => {
+        const iterator = new TopicIterator(mockDriver, mockTopic, {
+          filter: (_payload, context) => {
+            return context.topic === "test-topic";
+          },
+        });
+
+        await new Promise((resolve) => setTimeout(resolve, 0));
+
+        subscriberHandler?.("msg1", {
+          id: "1",
+          timestamp: Date.now(),
+          topic: "test-topic",
+        });
+        subscriberHandler?.("msg2", {
+          id: "2",
+          timestamp: Date.now(),
+          topic: "other-topic",
+        });
+        subscriberHandler?.("msg3", {
+          id: "3",
+          timestamp: Date.now(),
+          topic: "test-topic",
+        });
+
+        const result1 = await iterator.next();
+        const result2 = await iterator.next();
+
+        expect(result1.value?.payload).toBe("msg1");
+        expect(result2.value?.payload).toBe("msg3");
+
+        await iterator.return();
+      });
+
+      it("should log errors and skip messages when filter throws", async () => {
+        const consoleErrorSpy = vi
+          .spyOn(console, "error")
+          .mockImplementation(() => {});
+
+        const iterator = new TopicIterator(mockDriver, mockTopic, {
+          filter: (payload) => {
+            if ((payload as string) === "error") {
+              throw new Error("Filter error");
+            }
+            return true;
+          },
+        });
+
+        await new Promise((resolve) => setTimeout(resolve, 0));
+
+        sendMessage("good1");
+        sendMessage("error");
+        sendMessage("good2");
+
+        const result1 = await iterator.next();
+        const result2 = await iterator.next();
+
+        expect(result1.value?.payload).toBe("good1");
+        expect(result2.value?.payload).toBe("good2");
+        expect(consoleErrorSpy).toHaveBeenCalledWith(
+          expect.stringContaining("Filter error"),
+          expect.any(Error),
+        );
+
+        consoleErrorSpy.mockRestore();
+        await iterator.return();
+      });
+
+      it("should skip messages when filter returns false", async () => {
+        let filterCallCount = 0;
+
+        const iterator = new TopicIterator(mockDriver, mockTopic, {
+          filter: (payload) => {
+            filterCallCount++;
+            return (payload as string) === "pass";
+          },
+        });
+
+        await new Promise((resolve) => setTimeout(resolve, 0));
+
+        sendMessage("fail");
+        sendMessage("pass");
+        sendMessage("fail");
+        sendMessage("pass");
+
+        const result1 = await iterator.next();
+        const result2 = await iterator.next();
+
+        expect(result1.value?.payload).toBe("pass");
+        expect(result2.value?.payload).toBe("pass");
+        expect(filterCallCount).toBe(4);
+
+        await iterator.return();
+      });
+    });
+
+    describe("signal option", () => {
+      it("should stop iteration when signal is aborted", async () => {
+        const controller = new AbortController();
+
+        const iterator = new TopicIterator(mockDriver, mockTopic, {
+          signal: controller.signal,
+        });
+
+        await new Promise((resolve) => setTimeout(resolve, 0));
+
+        sendMessage("msg1");
+
+        const result1 = await iterator.next();
+        expect(result1.value?.payload).toBe("msg1");
+
+        // Abort the signal
+        controller.abort();
+
+        // Wait for cleanup
+        await new Promise((resolve) => setTimeout(resolve, 10));
+
+        const result2 = await iterator.next();
+        expect(result2.done).toBe(true);
+
+        expect(mockDriver.unsubscribe).toHaveBeenCalledWith("sub-123");
+      });
+
+      it("should unsubscribe when signal is aborted", async () => {
+        const controller = new AbortController();
+
+        const iterator = new TopicIterator(mockDriver, mockTopic, {
+          signal: controller.signal,
+        });
+
+        await new Promise((resolve) => setTimeout(resolve, 0));
+
+        controller.abort();
+
+        await new Promise((resolve) => setTimeout(resolve, 10));
+
+        expect(mockDriver.unsubscribe).toHaveBeenCalledWith("sub-123");
+      });
+
+      it("should work with signal that is already aborted", async () => {
+        const controller = new AbortController();
+        controller.abort();
+
+        const iterator = new TopicIterator(mockDriver, mockTopic, {
+          signal: controller.signal,
+        });
+
+        await new Promise((resolve) => setTimeout(resolve, 10));
+
+        const result = await iterator.next();
+        expect(result.done).toBe(true);
+      });
+    });
+
+    describe("combined filter and signal", () => {
+      it("should apply both filter and respect signal", async () => {
+        const controller = new AbortController();
+
+        const iterator = new TopicIterator(mockDriver, mockTopic, {
+          signal: controller.signal,
+          filter: (payload) => (payload as string).startsWith("keep"),
+        });
+
+        await new Promise((resolve) => setTimeout(resolve, 0));
+
+        sendMessage("keep1");
+        sendMessage("skip");
+        sendMessage("keep2");
+
+        const result1 = await iterator.next();
+        expect(result1.value?.payload).toBe("keep1");
+
+        controller.abort();
+        await new Promise((resolve) => setTimeout(resolve, 10));
+
+        const result2 = await iterator.next();
+        expect(result2.done).toBe(true);
+      });
+    });
+  });
 });

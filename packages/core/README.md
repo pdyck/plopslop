@@ -34,9 +34,8 @@ const pubsub = createPubSub({
   },
 });
 
-// Subscribe using async iterator
 (async () => {
-  for await (const { payload } of pubsub.userCreated.subscribe()) {
+  for await (const { payload } of pubsub.userCreated.stream()) {
     console.log(`User "${payload.name}" was created.`);
   }
 })();

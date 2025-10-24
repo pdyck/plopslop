@@ -322,50 +322,6 @@ describe("Topic", () => {
     });
   });
 
-  describe("subscribe without handler (iterator)", () => {
-    it("should return TopicIterator when called without handler", async () => {
-      const stringSchema = z.string();
-      const topicDef = defineTopic({
-        name: "test-topic",
-        schema: stringSchema,
-      });
-      const testTopic = new Topic(mockDriver, topicDef, new PluginChain([]));
-
-      const iterator = testTopic.subscribe();
-
-      expect(iterator).toBeInstanceOf(TopicIterator);
-    });
-
-    it("should create iterator with driver and topic", async () => {
-      const stringSchema = z.string();
-      const topicDef = defineTopic({
-        name: "test-topic",
-        schema: stringSchema,
-      });
-      const testTopic = new Topic(mockDriver, topicDef, new PluginChain([]));
-
-      const iterator = testTopic.subscribe();
-
-      expect(iterator).toBeDefined();
-      expect(iterator[Symbol.asyncIterator]).toBeDefined();
-    });
-
-    it("should be usable as async iterator", async () => {
-      const stringSchema = z.string();
-      const topicDef = defineTopic({
-        name: "test-topic",
-        schema: stringSchema,
-      });
-      const testTopic = new Topic(mockDriver, topicDef, new PluginChain([]));
-
-      const iterator = testTopic.subscribe();
-
-      expect(iterator[Symbol.asyncIterator]()).toBe(iterator);
-      expect(typeof iterator.next).toBe("function");
-      expect(typeof iterator.return).toBe("function");
-    });
-  });
-
   describe("unsubscribe", () => {
     it("should call driver.unsubscribe with subscription ID", async () => {
       const stringSchema = z.string();
@@ -538,6 +494,75 @@ describe("Topic", () => {
       // Unsubscribe
       await testTopic.unsubscribe(subId);
       expect(mockDriver.unsubscribe).toHaveBeenCalledWith(subId);
+    });
+  });
+
+  describe("stream() method", () => {
+    it("should return TopicIterator", () => {
+      const stringSchema = z.string();
+      const topicDef = defineTopic({
+        name: "test-topic",
+        schema: stringSchema,
+      });
+      const testTopic = new Topic(mockDriver, topicDef, new PluginChain([]));
+
+      const iterator = testTopic.stream();
+
+      expect(iterator).toBeInstanceOf(TopicIterator);
+      expect(iterator[Symbol.asyncIterator]).toBeDefined();
+    });
+
+    it("should pass options to TopicIterator", async () => {
+      const stringSchema = z.string();
+      const topicDef = defineTopic({
+        name: "test-topic",
+        schema: stringSchema,
+      });
+      const testTopic = new Topic(mockDriver, topicDef, new PluginChain([]));
+
+      const controller = new AbortController();
+      const filter = vi.fn().mockReturnValue(true);
+
+      const iterator = testTopic.stream({
+        signal: controller.signal,
+        filter,
+      });
+
+      expect(iterator).toBeInstanceOf(TopicIterator);
+    });
+
+    it("should work with for-await-of", async () => {
+      const stringSchema = z.string();
+      const topicDef = defineTopic({
+        name: "test-topic",
+        schema: stringSchema,
+      });
+      const testTopic = new Topic(mockDriver, topicDef, new PluginChain([]));
+
+      // Mock subscribe to immediately call handler
+      let handler: any;
+      mockDriver.subscribe = vi.fn().mockImplementation((_, h) => {
+        handler = h;
+        return Promise.resolve("sub-123");
+      });
+
+      const iterator = testTopic.stream();
+
+      // Wait for subscription to complete
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      // Simulate message
+      const envelope = {
+        payload: "test",
+        context: { id: "1", timestamp: Date.now(), topic: "test-topic" },
+      };
+      handler(JSON.stringify(envelope));
+
+      const result = await iterator.next();
+      expect(result.done).toBe(false);
+      expect(result.value?.payload).toBe("test");
+
+      await iterator.return();
     });
   });
 });

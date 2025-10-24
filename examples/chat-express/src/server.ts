@@ -43,7 +43,7 @@ wss.on("connection", async (ws) => {
     closed = true;
   });
 
-  for await (const { payload } of pubsub.messageReceived.subscribe()) {
+  for await (const { payload } of pubsub.messageReceived.stream()) {
     if (closed) break;
 
     console.log(`Client ${clientId} is receiving message`);

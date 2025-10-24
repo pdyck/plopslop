@@ -18,6 +18,11 @@ export type MessageHandler<TPayload = unknown> = (
   context: Context,
 ) => void;
 
+export type MessageFilter<TPayload extends z.ZodType> = (
+  payload: z.infer<TPayload>,
+  context: Context,
+) => boolean | Promise<boolean>;
+
 export interface Driver {
   connect(): Promise<void>;
   disconnect(): Promise<void>;
@@ -58,3 +63,17 @@ export type PubSub<TTopics extends Record<string, TopicDefinition<z.ZodType>>> =
   {
     [K in keyof TTopics]: Topic<TTopics[K]["schema"]>;
   };
+
+export interface IteratorOptions<TSchema extends z.ZodType> {
+  /**
+   * AbortSignal to cancel the iteration and unsubscribe
+   */
+  signal?: AbortSignal;
+
+  /**
+   * Filter function - only messages that pass will be yielded.
+   * Supports both sync and async predicates.
+   * If filter throws, message is skipped and error is logged.
+   */
+  filter?: MessageFilter<TSchema>;
+}

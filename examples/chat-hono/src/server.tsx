@@ -38,7 +38,7 @@ app.get(
         clientId = ++clientCounter;
         console.log(`Client ${clientId} connected`);
 
-        for await (const { payload } of pubsub.messageReceived.subscribe()) {
+        for await (const { payload } of pubsub.messageReceived.stream()) {
           if (closed) break;
 
           console.log(`Client ${clientId} is receiving message`);
