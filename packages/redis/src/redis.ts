@@ -1,8 +1,25 @@
 import type { Driver } from "@plopslop/core";
-import type { Cluster, RedisOptions } from "ioredis";
-import { Redis } from "ioredis";
+import type {
+  Cluster,
+  ClusterNode,
+  ClusterOptions,
+  RedisOptions,
+} from "ioredis";
+import { Redis, Cluster as RedisCluster } from "ioredis";
 
 export type RedisClient = Redis | Cluster;
+
+export type RedisDriverConfig =
+  | string
+  | RedisOptions
+  | {
+      cluster: ClusterNode[];
+      clusterOptions?: ClusterOptions;
+    }
+  | {
+      publisher: RedisClient;
+      subscriber: RedisClient;
+    };
 
 export class RedisDriver implements Driver {
   private publisher: RedisClient;
@@ -14,9 +31,36 @@ export class RedisDriver implements Driver {
   private subscriptionCounter: number;
   private connected: boolean;
 
-  constructor(options: RedisOptions = {}) {
-    this.publisher = new Redis({ ...options, lazyConnect: true });
-    this.subscriber = new Redis({ ...options, lazyConnect: true });
+  constructor(config?: RedisDriverConfig) {
+    // Detect config type and create appropriate clients
+    if (!config) {
+      // Default: connect to localhost
+      this.publisher = new Redis({ lazyConnect: true });
+      this.subscriber = new Redis({ lazyConnect: true });
+    } else if (typeof config === "string") {
+      // Connection string
+      this.publisher = new Redis(config, { lazyConnect: true });
+      this.subscriber = new Redis(config, { lazyConnect: true });
+    } else if ("publisher" in config && "subscriber" in config) {
+      // Pre-configured instances
+      this.publisher = config.publisher;
+      this.subscriber = config.subscriber;
+    } else if ("cluster" in config) {
+      // Cluster mode
+      this.publisher = new RedisCluster(config.cluster, {
+        ...config.clusterOptions,
+        lazyConnect: true,
+      });
+      this.subscriber = new RedisCluster(config.cluster, {
+        ...config.clusterOptions,
+        lazyConnect: true,
+      });
+    } else {
+      // Standard RedisOptions
+      this.publisher = new Redis({ ...config, lazyConnect: true });
+      this.subscriber = new Redis({ ...config, lazyConnect: true });
+    }
+
     this.subscriptions = new Map();
     this.subscriptionCounter = 0;
     this.connected = false;
@@ -82,7 +126,6 @@ export class RedisDriver implements Driver {
 
     this.subscriptions.delete(subscription);
 
-    // Unsubscribe from topic if no more subscriptions for it
     const topicStillHasSubscriptions = Array.from(
       this.subscriptions.values(),
     ).some((s) => s.topic === sub.topic);
@@ -93,6 +136,6 @@ export class RedisDriver implements Driver {
   }
 }
 
-export function redis(options: RedisOptions = {}) {
-  return new RedisDriver(options);
+export function redis(config?: RedisDriverConfig) {
+  return new RedisDriver(config);
 }
