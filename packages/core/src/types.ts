@@ -8,18 +8,18 @@ export interface Context {
   [key: string]: unknown;
 }
 
-export type Message<TPayload extends z.ZodType> = {
-  payload: z.infer<TPayload>;
+export type Message<TSchema extends z.ZodType> = {
+  payload: z.infer<TSchema>;
   context: Context;
 };
 
-export type MessageHandler<TPayload = unknown> = (
-  payload: TPayload,
+export type MessageHandler<TSchema extends z.ZodType> = (
+  payload: z.infer<TSchema>,
   context: Context,
 ) => void;
 
-export type MessageFilter<TPayload extends z.ZodType> = (
-  payload: z.infer<TPayload>,
+export type MessageFilter<TSchema extends z.ZodType> = (
+  payload: z.infer<TSchema>,
   context: Context,
 ) => boolean | Promise<boolean>;
 
@@ -65,15 +65,6 @@ export type PubSub<TTopics extends Record<string, TopicDefinition<z.ZodType>>> =
   };
 
 export interface IteratorOptions<TSchema extends z.ZodType> {
-  /**
-   * AbortSignal to cancel the iteration and unsubscribe
-   */
   signal?: AbortSignal;
-
-  /**
-   * Filter function - only messages that pass will be yielded.
-   * Supports both sync and async predicates.
-   * If filter throws, message is skipped and error is logged.
-   */
   filter?: MessageFilter<TSchema>;
 }

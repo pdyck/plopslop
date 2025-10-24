@@ -32,7 +32,7 @@ export class Topic<TSchema extends z.ZodType> {
     });
   }
 
-  async subscribe(handler: MessageHandler<z.infer<TSchema>>): Promise<string> {
+  async subscribe(handler: MessageHandler<TSchema>): Promise<string> {
     const wrapped = async (message: string) => {
       try {
         const { payload, context } = this.parse(message);

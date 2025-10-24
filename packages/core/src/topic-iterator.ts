@@ -1,27 +1,15 @@
 import type z from "zod";
 import type { Topic } from "./topic.js";
-import type { Context, Driver, IteratorOptions } from "./types.js";
+import type { Context, Driver, IteratorOptions, Message } from "./types.js";
 
 Iterator;
 
 export class TopicIterator<TSchema extends z.ZodType>
-  implements
-    AsyncIterableIterator<{
-      payload: z.infer<TSchema>;
-      context: Context;
-    }>
+  implements AsyncIterableIterator<Message<TSchema>>
 {
-  private readonly queue: Array<{
-    payload: z.infer<TSchema>;
-    context: Context;
-  }> = [];
+  private readonly queue: Array<Message<TSchema>> = [];
   private readonly waiters: Array<
-    (
-      value: IteratorResult<{
-        payload: z.infer<TSchema>;
-        context: Context;
-      }>,
-    ) => void
+    (value: IteratorResult<Message<TSchema>>) => void
   > = [];
   private subscriptionId: string | null = null;
   private done = false;
@@ -68,36 +56,28 @@ export class TopicIterator<TSchema extends z.ZodType>
     this.subscriptionId = await topic.subscribe(handler);
   }
 
-  [Symbol.asyncIterator](): AsyncIterableIterator<{
-    payload: z.infer<TSchema>;
-    context: Context;
-  }> {
+  [Symbol.asyncIterator](): AsyncIterableIterator<Message<TSchema>> {
     return this;
   }
 
-  async next(): Promise<
-    IteratorResult<{
-      payload: z.infer<TSchema>;
-      context: Context;
-    }>
-  > {
+  async next(): Promise<IteratorResult<Message<TSchema>>> {
     while (true) {
       if (this.done) {
         return { value: undefined, done: true };
       }
 
       // Get next message from queue or wait for one
-      let value: { payload: z.infer<TSchema>; context: Context } | undefined;
+      let value: Message<TSchema> | undefined;
 
       if (this.queue.length > 0) {
         value = this.queue.shift();
       } else {
         // Wait for next message
-        value = await new Promise<
-          IteratorResult<{ payload: z.infer<TSchema>; context: Context }>
-        >((resolve) => {
-          this.waiters.push(resolve);
-        }).then((result) => {
+        value = await new Promise<IteratorResult<Message<TSchema>>>(
+          (resolve) => {
+            this.waiters.push(resolve);
+          },
+        ).then((result) => {
           if (result.done) return undefined;
           return result.value;
         });
@@ -132,12 +112,7 @@ export class TopicIterator<TSchema extends z.ZodType>
     }
   }
 
-  async return(): Promise<
-    IteratorResult<{
-      payload: z.infer<TSchema>;
-      context: Context;
-    }>
-  > {
+  async return(): Promise<IteratorResult<Message<TSchema>>> {
     await this.cleanup();
     return { value: undefined, done: true };
   }
