@@ -18,6 +18,8 @@ This is a monorepo containing the following packages:
 
 - **[@plopslop/core](packages/core)** - Core pub/sub library with driver abstraction
 - **[@plopslop/redis](packages/redis)** - Redis driver for distributed pub/sub
+- **[@plopslop/postgres](packages/postgres)** - PostgreSQL driver using LISTEN/NOTIFY
+- **[@plopslop/otel](packages/otel)** - OpenTelemetry plugin for distributed tracing
 
 ## Quick Start
 
@@ -42,7 +44,7 @@ const pubsub = createPubSub({
 
 // Subscribe using async iterator
 (async () => {
-  for await (const { payload } of pubsub.userCreated.subscribe()) {
+  for await (const { payload } of pubsub.userCreated.stream()) {
     console.log(`User "${payload.name}" was created.`);
   }
 })();

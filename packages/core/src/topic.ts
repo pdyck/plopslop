@@ -47,11 +47,8 @@ export class Topic<TSchema extends z.ZodType> {
           handler(payload, context);
           return undefined;
         });
-      } catch (error) {
-        console.error(
-          `Failed to parse/validate message on topic "${this.def.name}":`,
-          error,
-        );
+      } catch {
+        // Silently skip invalid messages
       }
     };
 

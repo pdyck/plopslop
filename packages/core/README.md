@@ -34,14 +34,23 @@ const pubsub = createPubSub({
   },
 });
 
+// Subscribe using async iterator (recommended)
 (async () => {
   for await (const { payload } of pubsub.userCreated.stream()) {
     console.log(`User "${payload.name}" was created.`);
   }
 })();
 
+// Or subscribe using callback handler
+const subscriptionId = await pubsub.userCreated.subscribe((payload, context) => {
+  console.log(`User "${payload.name}" was created at ${context.timestamp}`);
+});
+
 // Publish a message
 await pubsub.userCreated.publish({ name: 'Alice' });
+
+// Unsubscribe when done
+await pubsub.userCreated.unsubscribe(subscriptionId);
 ```
 
 ## Drivers
@@ -49,7 +58,7 @@ await pubsub.userCreated.publish({ name: 'Alice' });
 The core package includes an in-memory event emitter driver. For production use cases:
 
 - **[@plopslop/redis](../redis)** - Redis pub/sub driver
-- **@plopslop/postgres** (coming soon) - Postgres LISTEN/NOTIFY driver
+- **[@plopslop/postgres](../postgres)** - PostgreSQL LISTEN/NOTIFY driver
 
 ## Plugins
 
@@ -85,6 +94,66 @@ Creates a pub/sub instance with typed topics.
 - `driver` - Driver instance (default: `eventEmitter()`)
 - `plugins` - Array of plugins (default: `[]`)
 - `topics` - Topic definitions with schemas
+- `prefix` - Topic name prefix (default: `'ps'`)
+
+**Returns:** Typed object with topic methods for each defined topic.
+
+### Topic Methods
+
+Each topic has the following methods:
+
+#### `stream(options?)`
+
+Returns an async iterator for consuming messages. **Recommended for most use cases.**
+
+**Parameters:**
+- `options.signal?: AbortSignal` - For cancellation
+- `options.filter?: (payload, context) => boolean` - Filter messages
+
+**Returns:** `AsyncIterableIterator<Message>`
+
+**Example:**
+```typescript
+for await (const { payload, context } of pubsub.userCreated.stream()) {
+  console.log(payload);
+}
+```
+
+#### `subscribe(handler)`
+
+Subscribe with a callback handler. Use when you need manual subscription management.
+
+**Parameters:**
+- `handler: (payload, context) => void` - Message handler function
+
+**Returns:** `Promise<string>` - Subscription ID for unsubscribing
+
+**Example:**
+```typescript
+const id = await pubsub.userCreated.subscribe((payload, context) => {
+  console.log(payload);
+});
+```
+
+#### `publish(payload)`
+
+Publish a message to the topic.
+
+**Parameters:**
+- `payload` - Data matching the topic's Zod schema
+
+**Returns:** `Promise<void>`
+
+**Throws:** `ZodError` if payload doesn't match schema
+
+#### `unsubscribe(subscriptionId)`
+
+Unsubscribe from the topic.
+
+**Parameters:**
+- `subscriptionId: string` - ID returned from `subscribe()`
+
+**Returns:** `Promise<void>`
 
 ### `eventEmitter()`
 

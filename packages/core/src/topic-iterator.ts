@@ -98,12 +98,8 @@ export class TopicIterator<TSchema extends z.ZodType>
             // Skip this message and continue to next iteration
             continue;
           }
-        } catch (error) {
-          console.error(
-            `Filter error for topic "${value.context.topic}":`,
-            error,
-          );
-          // Skip this message and continue to next iteration
+        } catch {
+          // Silently skip messages that cause filter errors
           continue;
         }
       }

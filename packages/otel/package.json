@@ -1,6 +1,7 @@
 {
   "name": "@plopslop/otel",
   "version": "0.1.0",
+  "description": "PlopSlop plugin for distributed tracing",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -13,6 +14,27 @@
   "files": [
     "dist"
   ],
+  "keywords": [
+    "opentelemetry",
+    "otel",
+    "tracing",
+    "observability",
+    "monitoring",
+    "pubsub",
+    "typescript",
+    "plopslop"
+  ],
+  "author": "Philipp Dyck <pdyck@posteo.de>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/pdyck/plopslop.git",
+    "directory": "packages/otel"
+  },
+  "homepage": "https://github.com/pdyck/plopslop#readme",
+  "bugs": {
+    "url": "https://github.com/pdyck/plopslop/issues"
+  },
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
