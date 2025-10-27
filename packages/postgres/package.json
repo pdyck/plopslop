@@ -1,7 +1,7 @@
 {
   "name": "@plopslop/postgres",
-  "version": "0.1.0",
-  "description": "PlopSlop driver for PostgreSQL using LISTEN/NOTIFY",
+  "version": "1.0.0",
+  "description": "Plopslop driver for PostgreSQL using LISTEN/NOTIFY",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

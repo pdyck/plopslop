@@ -1,6 +1,6 @@
 {
   "name": "@plopslop/core",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Type-safe ephemeral pub/sub with multiple drivers",
   "type": "module",
   "main": "./dist/index.js",
