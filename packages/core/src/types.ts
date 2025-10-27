@@ -1,4 +1,5 @@
 import type z from "zod";
+import type { PluginChain } from "./plugin-chain.js";
 import type { Topic } from "./topic.js";
 
 export interface Context {
@@ -51,12 +52,20 @@ export interface TopicDefinition<TSchema extends z.ZodType> {
   schema: TSchema;
 }
 
+export interface TopicOptions<TSchema extends z.ZodType> {
+  driver: Driver;
+  definition: TopicDefinition<TSchema>;
+  pluginChain: PluginChain;
+  prefix: string;
+}
+
 export interface PubSubOptions<
   TTopics extends Record<string, TopicDefinition<z.ZodType>>,
 > {
   driver?: Driver;
   plugins?: Plugin[];
   topics: TTopics;
+  prefix?: string;
 }
 
 export type PubSub<TTopics extends Record<string, TopicDefinition<z.ZodType>>> =

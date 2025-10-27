@@ -33,13 +33,18 @@ describe("Topic", () => {
         name: "test-topic",
         schema: stringSchema,
       });
-      const testTopic = new Topic(mockDriver, topicDef, new PluginChain([]));
+      const testTopic = new Topic({
+        driver: mockDriver,
+        definition: topicDef,
+        pluginChain: new PluginChain([]),
+        prefix: "test",
+      });
 
       await testTopic.publish("hello world");
 
       expect(mockDriver.publish).toHaveBeenCalledTimes(1);
       const publishCall = (mockDriver.publish as any).mock.calls[0];
-      expect(publishCall[0]).toBe("test-topic");
+      expect(publishCall[0]).toBe("test:test-topic");
 
       const message = JSON.parse(publishCall[1]);
       expect(message.payload).toBe("hello world");
@@ -56,7 +61,12 @@ describe("Topic", () => {
         name: "number-topic",
         schema: numberSchema,
       });
-      const testTopic = new Topic(mockDriver, topicDef, new PluginChain([]));
+      const testTopic = new Topic({
+        driver: mockDriver,
+        definition: topicDef,
+        pluginChain: new PluginChain([]),
+        prefix: "test",
+      });
 
       await testTopic.publish(42);
 
@@ -72,7 +82,12 @@ describe("Topic", () => {
         name: "test-topic",
         schema: stringSchema,
       });
-      const testTopic = new Topic(mockDriver, topicDef, new PluginChain([]));
+      const testTopic = new Topic({
+        driver: mockDriver,
+        definition: topicDef,
+        pluginChain: new PluginChain([]),
+        prefix: "test",
+      });
 
       await expect(testTopic.publish(123 as any)).rejects.toThrow();
       expect(mockDriver.publish).not.toHaveBeenCalled();
@@ -86,7 +101,12 @@ describe("Topic", () => {
       });
 
       const topicDef = defineTopic({ name: "users", schema: userSchema });
-      const testTopic = new Topic(mockDriver, topicDef, new PluginChain([]));
+      const testTopic = new Topic({
+        driver: mockDriver,
+        definition: topicDef,
+        pluginChain: new PluginChain([]),
+        prefix: "test",
+      });
 
       const user = {
         id: 1,
@@ -105,7 +125,12 @@ describe("Topic", () => {
     it("should handle array schemas", async () => {
       const arraySchema = z.array(z.number());
       const topicDef = defineTopic({ name: "numbers", schema: arraySchema });
-      const testTopic = new Topic(mockDriver, topicDef, new PluginChain([]));
+      const testTopic = new Topic({
+        driver: mockDriver,
+        definition: topicDef,
+        pluginChain: new PluginChain([]),
+        prefix: "test",
+      });
 
       await testTopic.publish([1, 2, 3, 4, 5]);
 
@@ -127,7 +152,12 @@ describe("Topic", () => {
       });
 
       const topicDef = defineTopic({ name: "nested", schema: nestedSchema });
-      const testTopic = new Topic(mockDriver, topicDef, new PluginChain([]));
+      const testTopic = new Topic({
+        driver: mockDriver,
+        definition: topicDef,
+        pluginChain: new PluginChain([]),
+        prefix: "test",
+      });
 
       const data = {
         user: {
@@ -155,14 +185,19 @@ describe("Topic", () => {
         name: "test-topic",
         schema: stringSchema,
       });
-      const testTopic = new Topic(mockDriver, topicDef, new PluginChain([]));
+      const testTopic = new Topic({
+        driver: mockDriver,
+        definition: topicDef,
+        pluginChain: new PluginChain([]),
+        prefix: "test",
+      });
 
       const handler = vi.fn();
       const subId = await testTopic.subscribe(handler);
 
       expect(subId).toBe("sub-123");
       expect(mockDriver.subscribe).toHaveBeenCalledWith(
-        "test-topic",
+        "test:test-topic",
         expect.any(Function),
       );
     });
@@ -174,7 +209,12 @@ describe("Topic", () => {
       });
 
       const topicDef = defineTopic({ name: "messages", schema: objectSchema });
-      const testTopic = new Topic(mockDriver, topicDef, new PluginChain([]));
+      const testTopic = new Topic({
+        driver: mockDriver,
+        definition: topicDef,
+        pluginChain: new PluginChain([]),
+        prefix: "test",
+      });
 
       const handler = vi.fn();
       await testTopic.subscribe(handler);
@@ -204,7 +244,12 @@ describe("Topic", () => {
     it("should only call handler with validated messages", async () => {
       const numberSchema = z.number();
       const topicDef = defineTopic({ name: "numbers", schema: numberSchema });
-      const testTopic = new Topic(mockDriver, topicDef, new PluginChain([]));
+      const testTopic = new Topic({
+        driver: mockDriver,
+        definition: topicDef,
+        pluginChain: new PluginChain([]),
+        prefix: "test",
+      });
 
       const handler = vi.fn();
       await testTopic.subscribe(handler);
@@ -234,7 +279,12 @@ describe("Topic", () => {
         name: "test-topic",
         schema: stringSchema,
       });
-      const testTopic = new Topic(mockDriver, topicDef, new PluginChain([]));
+      const testTopic = new Topic({
+        driver: mockDriver,
+        definition: topicDef,
+        pluginChain: new PluginChain([]),
+        prefix: "test",
+      });
 
       const handler = vi.fn();
       await testTopic.subscribe(handler);
@@ -258,7 +308,12 @@ describe("Topic", () => {
         name: "test-topic",
         schema: stringSchema,
       });
-      const testTopic = new Topic(mockDriver, topicDef, new PluginChain([]));
+      const testTopic = new Topic({
+        driver: mockDriver,
+        definition: topicDef,
+        pluginChain: new PluginChain([]),
+        prefix: "test",
+      });
 
       const handler = vi.fn();
       await testTopic.subscribe(handler);
@@ -275,7 +330,12 @@ describe("Topic", () => {
     it("should handle schema validation errors", async () => {
       const emailSchema = z.string().email();
       const topicDef = defineTopic({ name: "emails", schema: emailSchema });
-      const testTopic = new Topic(mockDriver, topicDef, new PluginChain([]));
+      const testTopic = new Topic({
+        driver: mockDriver,
+        definition: topicDef,
+        pluginChain: new PluginChain([]),
+        prefix: "test",
+      });
 
       const handler = vi.fn();
       await testTopic.subscribe(handler);
@@ -307,7 +367,12 @@ describe("Topic", () => {
     it("should log errors with topic name", async () => {
       const stringSchema = z.string();
       const topicDef = defineTopic({ name: "my-topic", schema: stringSchema });
-      const testTopic = new Topic(mockDriver, topicDef, new PluginChain([]));
+      const testTopic = new Topic({
+        driver: mockDriver,
+        definition: topicDef,
+        pluginChain: new PluginChain([]),
+        prefix: "test",
+      });
 
       const handler = vi.fn();
       await testTopic.subscribe(handler);
@@ -329,7 +394,12 @@ describe("Topic", () => {
         name: "test-topic",
         schema: stringSchema,
       });
-      const testTopic = new Topic(mockDriver, topicDef, new PluginChain([]));
+      const testTopic = new Topic({
+        driver: mockDriver,
+        definition: topicDef,
+        pluginChain: new PluginChain([]),
+        prefix: "test",
+      });
 
       await testTopic.unsubscribe("sub-456");
 
@@ -343,7 +413,12 @@ describe("Topic", () => {
         name: "test-topic",
         schema: stringSchema,
       });
-      const testTopic = new Topic(mockDriver, topicDef, new PluginChain([]));
+      const testTopic = new Topic({
+        driver: mockDriver,
+        definition: topicDef,
+        pluginChain: new PluginChain([]),
+        prefix: "test",
+      });
 
       const mockUnsubscribe = vi.fn().mockResolvedValue(undefined);
       mockDriver.unsubscribe = mockUnsubscribe;
@@ -362,7 +437,12 @@ describe("Topic", () => {
       });
 
       const topicDef = defineTopic({ name: "chat", schema: messageSchema });
-      const testTopic = new Topic(mockDriver, topicDef, new PluginChain([]));
+      const testTopic = new Topic({
+        driver: mockDriver,
+        definition: topicDef,
+        pluginChain: new PluginChain([]),
+        prefix: "test",
+      });
 
       const handler = vi.fn();
       await testTopic.subscribe(handler);
@@ -393,7 +473,12 @@ describe("Topic", () => {
         name: "test-topic",
         schema: stringSchema,
       });
-      const testTopic = new Topic(mockDriver, topicDef, new PluginChain([]));
+      const testTopic = new Topic({
+        driver: mockDriver,
+        definition: topicDef,
+        pluginChain: new PluginChain([]),
+        prefix: "test",
+      });
 
       const handler1 = vi.fn();
       const handler2 = vi.fn();
@@ -418,7 +503,12 @@ describe("Topic", () => {
       });
 
       const topicDef = defineTopic({ name: "users", schema: strictSchema });
-      const testTopic = new Topic(mockDriver, topicDef, new PluginChain([]));
+      const testTopic = new Topic({
+        driver: mockDriver,
+        definition: topicDef,
+        pluginChain: new PluginChain([]),
+        prefix: "test",
+      });
 
       const handler = vi.fn();
       await testTopic.subscribe(handler);
@@ -452,7 +542,12 @@ describe("Topic", () => {
         name: "test-topic",
         schema: stringSchema,
       });
-      const testTopic = new Topic(mockDriver, topicDef, new PluginChain([]));
+      const testTopic = new Topic({
+        driver: mockDriver,
+        definition: topicDef,
+        pluginChain: new PluginChain([]),
+        prefix: "test",
+      });
 
       const handler = vi.fn();
       await testTopic.subscribe(handler);
@@ -483,7 +578,12 @@ describe("Topic", () => {
         name: "test-topic",
         schema: stringSchema,
       });
-      const testTopic = new Topic(mockDriver, topicDef, new PluginChain([]));
+      const testTopic = new Topic({
+        driver: mockDriver,
+        definition: topicDef,
+        pluginChain: new PluginChain([]),
+        prefix: "test",
+      });
 
       const handler = vi.fn();
 
@@ -504,7 +604,12 @@ describe("Topic", () => {
         name: "test-topic",
         schema: stringSchema,
       });
-      const testTopic = new Topic(mockDriver, topicDef, new PluginChain([]));
+      const testTopic = new Topic({
+        driver: mockDriver,
+        definition: topicDef,
+        pluginChain: new PluginChain([]),
+        prefix: "test",
+      });
 
       const iterator = testTopic.stream();
 
@@ -518,7 +623,12 @@ describe("Topic", () => {
         name: "test-topic",
         schema: stringSchema,
       });
-      const testTopic = new Topic(mockDriver, topicDef, new PluginChain([]));
+      const testTopic = new Topic({
+        driver: mockDriver,
+        definition: topicDef,
+        pluginChain: new PluginChain([]),
+        prefix: "test",
+      });
 
       const controller = new AbortController();
       const filter = vi.fn().mockReturnValue(true);
@@ -537,7 +647,12 @@ describe("Topic", () => {
         name: "test-topic",
         schema: stringSchema,
       });
-      const testTopic = new Topic(mockDriver, topicDef, new PluginChain([]));
+      const testTopic = new Topic({
+        driver: mockDriver,
+        definition: topicDef,
+        pluginChain: new PluginChain([]),
+        prefix: "test",
+      });
 
       // Mock subscribe to immediately call handler
       let handler: any;

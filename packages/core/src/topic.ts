@@ -7,14 +7,21 @@ import type {
   IteratorOptions,
   MessageHandler,
   TopicDefinition,
+  TopicOptions,
 } from "./types.js";
 
 export class Topic<TSchema extends z.ZodType> {
-  constructor(
-    private readonly driver: Driver,
-    private readonly def: TopicDefinition<TSchema>,
-    private readonly pluginChain: PluginChain,
-  ) {}
+  private readonly driver: Driver;
+  private readonly def: TopicDefinition<TSchema>;
+  private readonly pluginChain: PluginChain;
+  private readonly name: string;
+
+  constructor(options: TopicOptions<TSchema>) {
+    this.driver = options.driver;
+    this.def = options.definition;
+    this.pluginChain = options.pluginChain;
+    this.name = `${options.prefix}:${options.definition.name}`;
+  }
 
   async publish(payload: z.infer<TSchema>): Promise<void> {
     const context: Context = {
@@ -27,7 +34,7 @@ export class Topic<TSchema extends z.ZodType> {
 
     await this.pluginChain.publish(validatedPayload, context, async () => {
       const message = JSON.stringify({ payload: validatedPayload, context });
-      await this.driver.publish(this.def.name, message);
+      await this.driver.publish(this.name, message);
       return undefined;
     });
   }
@@ -48,7 +55,7 @@ export class Topic<TSchema extends z.ZodType> {
       }
     };
 
-    return this.driver.subscribe(this.def.name, wrapped);
+    return this.driver.subscribe(this.name, wrapped);
   }
 
   async unsubscribe(subscription: string): Promise<void> {

@@ -10,12 +10,18 @@ export function createPubSub<
   driver = eventEmitter(),
   plugins = [],
   topics,
+  prefix = "ps",
 }: PubSubOptions<TTopics>): PubSub<TTopics> {
   const pubsub: Record<string, Topic<z.ZodType>> = {};
   const pluginChain = new PluginChain(plugins);
 
   for (const [key, definition] of Object.entries(topics)) {
-    pubsub[key] = new Topic(driver, definition, pluginChain);
+    pubsub[key] = new Topic({
+      driver,
+      definition,
+      pluginChain,
+      prefix,
+    });
   }
 
   return pubsub as PubSub<TTopics>;
