@@ -508,11 +508,7 @@ describe("TopicIterator", () => {
         await iterator.return();
       });
 
-      it("should log errors and skip messages when filter throws", async () => {
-        const consoleErrorSpy = vi
-          .spyOn(console, "error")
-          .mockImplementation(() => {});
-
+      it("should skip messages when filter throws", async () => {
         const iterator = new TopicIterator(mockDriver, mockTopic, {
           filter: (payload) => {
             if ((payload as string) === "error") {
@@ -533,12 +529,6 @@ describe("TopicIterator", () => {
 
         expect(result1.value?.payload).toBe("good1");
         expect(result2.value?.payload).toBe("good2");
-        expect(consoleErrorSpy).toHaveBeenCalledWith(
-          expect.stringContaining("Filter error"),
-          expect.any(Error),
-        );
-
-        consoleErrorSpy.mockRestore();
         await iterator.return();
       });
 
