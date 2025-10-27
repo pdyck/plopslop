@@ -1,6 +1,6 @@
 {
   "name": "@plopslop/redis",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Plopslop driver for Redis using pubsub",
   "type": "module",
   "main": "./dist/index.js",

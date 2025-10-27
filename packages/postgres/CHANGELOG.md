@@ -1,0 +1,12 @@
+# @plopslop/postgres
+
+## 1.0.0
+
+### Major Changes
+
+- Initial v1.0.0 release
+
+### Patch Changes
+
+- Updated dependencies
+  - @plopslop/core@1.0.0
