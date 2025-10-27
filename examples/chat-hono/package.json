@@ -4,8 +4,7 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/server.tsx",
-    "build": "tsc",
-    "start": "node dist/server.js"
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@hono/node-server": "^1.19.5",
