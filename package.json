@@ -7,7 +7,6 @@
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
     "format": "biome check --write .",
-    "format:fix": "biome check --write --fix .",
     "lint": "biome check ."
   },
   "devDependencies": {

@@ -1,18 +1,17 @@
 {
-    "extends": "../../tsconfig.json",
-    "compilerOptions": {
-      "rootDir": "./src",
-      "outDir": "./dist"
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "rootDir": "./src",
+    "outDir": "./dist"
+  },
+  "include": ["./src"],
+  "exclude": ["node_modules"],
+  "references": [
+    {
+      "path": "../../packages/core"
     },
-    "include": ["./src"],
-    "exclude": ["node_modules"],
-    "references": [
-      {
-        "path": "../../packages/core"
-      },
-      {
-        "path": "../../packages/redis"
-      }
-    ]
-  }
-  
+    {
+      "path": "../../packages/redis"
+    }
+  ]
+}
