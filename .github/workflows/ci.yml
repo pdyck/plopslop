@@ -36,11 +36,11 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 'latest'
           cache: 'pnpm'
-      - uses: pnpm/action-setup@v4
       - run: pnpm install
       - run: pnpm build
       - run: pnpm test
@@ -49,11 +49,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 'latest'
           cache: 'pnpm'
-      - uses: pnpm/action-setup@v4
       - run: pnpm install
       - run: pnpm typecheck
       - run: pnpm lint
