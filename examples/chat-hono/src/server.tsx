@@ -148,14 +148,16 @@ app.get("/", (c) => {
   );
 });
 
+const PORT = process.env.PORT ? Number(process.env.PORT) : 3000;
+
 const server = serve({
   fetch: app.fetch,
-  port: 3000,
+  port: PORT,
 });
 
 injectWebSocket(server);
 
-console.log("Server running on http://localhost:3000");
+console.log(`Server running on http://localhost:${PORT}`);
 
 process.on("SIGINT", async () => {
   console.log("Shutting down...");

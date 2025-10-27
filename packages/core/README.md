@@ -1,160 +1,242 @@
 # @plopslop/core
 
-Core pub/sub library for Node.js with type-safe message handling and plugin support.
+Core pub/sub library with type-safe message handling and plugin support.
 
 ## Installation
 
 ```bash
-pnpm add @plopslop/core
+pnpm add @plopslop/core zod
 ```
 
-## Features
+## Usage
 
-- **Type-safe** message publishing and subscription using Zod schemas
-- **Plugin system** for middleware-style message processing
-- **Driver abstraction** - use different backends (Redis, Postgres, in-memory)
-- **Async iterators** for elegant subscription handling
-- **Zero dependencies** except Zod
-
-## Basic Usage
+### Basic pub/sub
 
 ```typescript
-import { createPubSub, eventEmitter } from '@plopslop/core';
+import { createPubSub } from '@plopslop/core';
 import { z } from 'zod';
 
 const pubsub = createPubSub({
-  driver: eventEmitter(), // In-memory driver
   topics: {
     userCreated: {
       name: 'user.created',
+      schema: z.object({ name: z.string() }),
+    },
+  },
+});
+
+for await (const { payload } of pubsub.userCreated.stream()) {
+  console.log('User created:', payload.name);
+}
+
+await pubsub.userCreated.publish({ name: 'Alice' });
+```
+
+### Message filtering
+
+```typescript
+const pubsub = createPubSub({
+  topics: {
+    orders: {
+      name: 'order.created',
       schema: z.object({
-        name: z.string(),
+        amount: z.number(),
+        priority: z.enum(['low', 'high']),
       }),
     },
   },
 });
 
-// Subscribe using async iterator (recommended)
-(async () => {
-  for await (const { payload } of pubsub.userCreated.stream()) {
-    console.log(`User "${payload.name}" was created.`);
-  }
-})();
-
-// Or subscribe using callback handler
-const subscriptionId = await pubsub.userCreated.subscribe((payload, context) => {
-  console.log(`User "${payload.name}" was created at ${context.timestamp}`);
-});
-
-// Publish a message
-await pubsub.userCreated.publish({ name: 'Alice' });
-
-// Unsubscribe when done
-await pubsub.userCreated.unsubscribe(subscriptionId);
+// Only process high-priority orders
+for await (const { payload } of pubsub.orders.stream({
+  filter: (payload) => payload.priority === 'high',
+})) {
+  console.log('High priority order:', payload.amount);
+}
 ```
 
-## Drivers
+### Multiple topics
 
-The core package includes an in-memory event emitter driver. For production use cases:
+```typescript
+const pubsub = createPubSub({
+  topics: {
+    userCreated: {
+      name: 'user.created',
+      schema: z.object({ id: z.string() }),
+    },
+    userDeleted: {
+      name: 'user.deleted',
+      schema: z.object({ id: z.string() }),
+    },
+  },
+});
 
-- **[@plopslop/redis](../redis)** - Redis pub/sub driver
-- **[@plopslop/postgres](../postgres)** - PostgreSQL LISTEN/NOTIFY driver
+await pubsub.userCreated.publish({ id: '123' });
+await pubsub.userDeleted.publish({ id: '456' });
+```
+
+### Cancellation
+
+```typescript
+const controller = new AbortController();
+
+for await (const msg of pubsub.events.stream({
+  signal: controller.signal
+})) {
+  if (shouldStop) {
+    controller.abort();
+  }
+}
+```
+
+## Driver Architecture
+
+The driver abstraction allows pluggable backends:
+
+```typescript
+interface Driver {
+  connect(): Promise<void>;
+  disconnect(): Promise<void>;
+  publish(topic: string, message: string): Promise<void>;
+  subscribe(topic: string, handler: (message: string) => void): Promise<string>;
+  unsubscribe(subscription: string): Promise<void>;
+}
+```
+
+Drivers handle transport-specific details (Redis pub/sub, PostgreSQL LISTEN/NOTIFY, in-memory events) while the core provides type safety, schema validation, and plugin execution.
 
 ## Plugins
 
-Create middleware-style plugins to add functionality:
+Plugins add middleware-style processing to publish and subscribe operations.
+
+### Plugin Interface
+
+```typescript
+interface Plugin {
+  name: string;
+  publish?: (payload: unknown, context: Context, next: () => Promise<void>) => Promise<void>;
+  subscribe?: (payload: unknown, context: Context, next: () => Promise<void>) => Promise<void>;
+}
+```
+
+### Logging Plugin
 
 ```typescript
 const loggingPlugin = {
   name: 'logging',
   publish: async (payload, context, next) => {
-    console.log(`Publishing ${context.topic}`);
+    console.log(`Publishing to ${context.topic}`);
     await next();
   },
   subscribe: async (payload, context, next) => {
-    console.log(`Receiving ${context.topic}`);
+    console.log(`Received from ${context.topic}`);
     await next();
   },
 };
 
 const pubsub = createPubSub({
-  driver: eventEmitter(),
   plugins: [loggingPlugin],
-  topics: { ... },
+  topics: { /* ... */ },
 });
+```
+
+### Validation Plugin
+
+```typescript
+const validationPlugin = {
+  name: 'validation',
+  publish: async (payload, context, next) => {
+    if (!payload.id) {
+      throw new Error('Missing required id field');
+    }
+    await next();
+  },
+};
 ```
 
 ## API
 
-### `createPubSub(options)`
+### createPubSub(options)
 
-Creates a pub/sub instance with typed topics.
+```typescript
+function createPubSub<TTopics extends Record<string, TopicDefinition>>(
+  options: PubSubOptions<TTopics>
+): PubSub<TTopics>
+```
+
+Creates a type-safe pub/sub instance.
 
 **Options:**
-- `driver` - Driver instance (default: `eventEmitter()`)
-- `plugins` - Array of plugins (default: `[]`)
-- `topics` - Topic definitions with schemas
-- `prefix` - Topic name prefix (default: `'ps'`)
+- `driver?: Driver` - Backend driver (default: `eventEmitter()`)
+- `plugins?: Plugin[]` - Middleware plugins (default: `[]`)
+- `topics: Record<string, TopicDefinition>` - Topic definitions (required)
+- `prefix?: string` - Topic name prefix (default: `"ps"`)
 
-**Returns:** Typed object with topic methods for each defined topic.
+**Returns:** Object with methods for each defined topic
 
 ### Topic Methods
 
-Each topic has the following methods:
+Each topic provides:
 
-#### `stream(options?)`
+#### stream(options?)
 
-Returns an async iterator for consuming messages. **Recommended for most use cases.**
-
-**Parameters:**
-- `options.signal?: AbortSignal` - For cancellation
-- `options.filter?: (payload, context) => boolean` - Filter messages
-
-**Returns:** `AsyncIterableIterator<Message>`
-
-**Example:**
 ```typescript
-for await (const { payload, context } of pubsub.userCreated.stream()) {
+stream(options?: IteratorOptions): AsyncIterableIterator<Message>
+```
+
+Subscribe using async iterator. Recommended for most use cases.
+
+**Options:**
+- `signal?: AbortSignal` - Cancellation signal
+- `filter?: (payload, context) => boolean | Promise<boolean>` - Message filter
+
+```typescript
+for await (const { payload, context } of pubsub.events.stream()) {
   console.log(payload);
 }
 ```
 
-#### `subscribe(handler)`
+#### subscribe(handler)
 
-Subscribe with a callback handler. Use when you need manual subscription management.
-
-**Parameters:**
-- `handler: (payload, context) => void` - Message handler function
-
-**Returns:** `Promise<string>` - Subscription ID for unsubscribing
-
-**Example:**
 ```typescript
-const id = await pubsub.userCreated.subscribe((payload, context) => {
+subscribe(handler: (payload, context) => void): Promise<string>
+```
+
+Subscribe with callback handler. Returns subscription ID for cleanup.
+
+```typescript
+const id = await pubsub.events.subscribe((payload, context) => {
   console.log(payload);
 });
 ```
 
-#### `publish(payload)`
+#### publish(payload)
 
-Publish a message to the topic.
+```typescript
+publish(payload: PayloadType): Promise<void>
+```
 
-**Parameters:**
-- `payload` - Data matching the topic's Zod schema
+Publish a message. Validates against topic schema.
 
-**Returns:** `Promise<void>`
+Throws `ZodError` if payload doesn't match schema.
 
-**Throws:** `ZodError` if payload doesn't match schema
+#### unsubscribe(subscriptionId)
 
-#### `unsubscribe(subscriptionId)`
+```typescript
+unsubscribe(subscriptionId: string): Promise<void>
+```
 
-Unsubscribe from the topic.
+Unsubscribe from topic.
 
-**Parameters:**
-- `subscriptionId: string` - ID returned from `subscribe()`
+### eventEmitter()
 
-**Returns:** `Promise<void>`
-
-### `eventEmitter()`
+```typescript
+function eventEmitter(): Driver
+```
 
 Creates an in-memory driver for local pub/sub.
+
+## Requirements
+
+- zod
+- Node.js 18+

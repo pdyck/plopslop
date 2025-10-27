@@ -1,6 +1,6 @@
 # @plopslop/redis
 
-Redis driver for plopslop - enables distributed pub/sub across multiple Node.js instances.
+Redis driver for distributed pub/sub across Node.js instances.
 
 ## Installation
 
@@ -11,18 +11,18 @@ pnpm add @plopslop/redis ioredis
 ## Usage
 
 ```typescript
-import { createPubSub } from '@plopslop/core';
-import { redis } from '@plopslop/redis';
-import { z } from 'zod';
+import { createPubSub } from "@plopslop/core";
+import { redis } from "@plopslop/redis";
+import { z } from "zod";
 
 const pubsub = createPubSub({
   driver: redis({
-    host: 'localhost',
+    host: "localhost",
     port: 6379,
   }),
   topics: {
     userCreated: {
-      name: 'user.created',
+      name: "user.created",
       schema: z.object({ name: z.string() }),
     },
   },
@@ -31,28 +31,26 @@ const pubsub = createPubSub({
 
 ## Configuration
 
-The `redis()` function accepts all [ioredis configuration options](https://github.com/redis/ioredis/blob/main/API.md#new-redisport-host-options):
+The `redis()` function accepts all [ioredis configuration options](https://github.com/redis/ioredis):
 
 ```typescript
 redis({
-  host: 'localhost',
+  host: "localhost",
   port: 6379,
-  password: 'your-password',
+  password: "your-password",
   db: 0,
   retryStrategy: (times) => Math.min(times * 50, 2000),
 })
 ```
 
-## Features
+## Limitations
 
-- **Lazy connection** - Connections are established when needed
-- **Automatic subscription management** - Subscribes/unsubscribes to Redis channels as needed
-- **Multiple subscriptions per topic** - Efficiently handles multiple handlers for the same topic
-- **Cluster support** - Works with Redis Cluster via ioredis
+- Messages are ephemeral - not persisted if no subscribers are active
+- No message acknowledgment or delivery guarantees
+- Subscriber connections must be maintained for message delivery
 
-## Connection Management
+## Requirements
 
-```typescript
-const driver = redis();
-const pubsub = createPubSub({ driver, topics: { ... } });
-```
+- Redis 2.0+
+- ioredis
+- Node.js 18+
