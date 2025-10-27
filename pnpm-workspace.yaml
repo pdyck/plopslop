@@ -4,6 +4,8 @@ packages:
 
 catalog:
   ioredis: ^5.4.2
+  pg: ^8.13.1
+  "@types/pg": ^8.11.10
   typescript: ^5.9.3
   vitest: ^3.2.4
   vite-tsconfig-paths: ^5.1.4

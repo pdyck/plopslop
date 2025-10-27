@@ -5,6 +5,15 @@ services:
     ports:
       - "6379:6379"
 
+  postgres:
+    image: postgres:16
+    restart: on-failure
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: plopslop_test
+
   spotlight:
     image: ghcr.io/getsentry/spotlight:latest
     restart: on-failure
