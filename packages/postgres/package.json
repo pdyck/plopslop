@@ -41,8 +41,10 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },
+  "dependencies": {
+    "@plopslop/core": "workspace:*"
+  },
   "peerDependencies": {
-    "@plopslop/core": "workspace:*",
     "pg": "catalog:"
   },
   "devDependencies": {

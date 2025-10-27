@@ -41,9 +41,11 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },
-  "peerDependencies": {
-    "@opentelemetry/api": "^1.0.0",
+  "dependencies": {
     "@plopslop/core": "workspace:*"
+  },
+  "peerDependencies": {
+    "@opentelemetry/api": "^1.0.0"
   },
   "devDependencies": {
     "@types/node": "24.7.0",
