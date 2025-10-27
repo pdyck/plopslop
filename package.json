@@ -11,6 +11,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "catalog:",
+    "@changesets/cli": "^2.29.7",
     "turbo": "catalog:",
     "typescript": "catalog:"
   },

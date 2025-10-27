@@ -1,6 +1,6 @@
 {
   "name": "@plopslop/otel",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "description": "Plopslop plugin for distributed tracing",
   "type": "module",
   "main": "./dist/index.js",
@@ -14,6 +14,9 @@
   "files": [
     "dist"
   ],
+  "publishConfig": {
+    "access": "public"
+  },
   "keywords": [
     "opentelemetry",
     "otel",
